@@ -3,44 +3,87 @@ import subprocess
 import glob
 import numpy as np
 import matplotlib.pyplot as plt
+from nustar import *
 from astropy.io import fits
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 
 
-class NuObs:
+class NuAnalysis(Observation):
     """
-    This class defines a basic shell object for performing analysis on NuSTAR observations using an installation of HEASoft, 
-    DS9, and the NuSTAR calibration database.
+    This class defines an object to be used for performing analysis on a NuSTAR observation.
     """
 
-    def __init__(self, obsid, dt=1000, snr=3):
-        self.obsid = obsid
-        self.path = f"./{obsid}/"
-        self.contents = os.listdir(self.path)
-        if "event_cl" not in self.contents:
-            print("Clean science events not found. Running nupipeline cleaning process.")
+    def __init__(self, dtime, snr_threshold, path, seqid, evdir, out_path, clean=False):
+        self._snr = snr_threshold
+        self._dtime = dtime
+        self._clean = clean
+        self._phi_bounds = self.read_in_phi_bounds("nustar_pilow.txt", "nustar_pihi.txt")
+        self._time_bins = self.generate_timebins()
+        super().__init__(path, seqid, evdir, out_path)
+
+        self._contents = os.listdir(self._path)
+        if not self._clean or self._evdir not in self._contents:
             self.run_cleaning_script()
-        self.header_info = self.generate_headerinfo()
-        self.read_in_phi()
-        self.dt = dt
-        self.snr = snr
-        self.time_bins = self.generate_timebins()
-        #self.ra = self.ra_dec_todeg()
-        #self.dec = self.ra_dec_todeg()
-        self.detect_info = {}
+
+        self._detections = None
+
+    # Mutable properties begin below
+
+    @property
+    def snr(self):
+        """
+        Returns the set SNR threshold for astrometry analysis.
+        """
+        return self._snr
+
+
+    @property
+    def dtime(self):
+        """
+        Returns the time cutting parametry used for astrometry analysis.
+        """
+        return self._dtime
+
+
+    @property
+    def phi_bounds(self):
+        """
+        Returns the phi_bounds set for analysis.
+        """
+        return self._phi_bounds
+
+
+    @property 
+    def time_bins(self):
+        """
+        Returns the time bins set for analysis.
+        """
+        return self._time_bins
+    
+
+    @property
+    def detections(self):
+        """
+        Returns the detections found for this object.
+        """
+        return self._detections
         
-        
-    def read_in_phi(self):
+    # Methods begin below
+
+    def read_in_phi_bounds(self, pilow_file, pihi_file):
         """
         Makes use of two files `nustar_pilow.txt` and `nustar_pihi.txt` within the `nustar` directory to set PI channel thresholds 
         for data analysis using NUSTARDAS
 
         Arguments
         ---------
-        None
-
+        pilow_file : str
+            The name of the file containing the pilow bounds.
+        pihi_file : str
+            The name of the file containing the pihi bounds.
+        
         Returns
         -------
         None
@@ -51,10 +94,9 @@ class NuObs:
             when the PI channel bounds are not of the same length
         """
 
-        self.phi_bounds = []
-        low_phi = open("nustar_pilow.txt", 'r')
-        high_phi = open("nustar_pihi.txt", 'r')
-
+        phi_bounds = []
+        low_phi = open(pilow_file, 'r')
+        high_phi = open(pihi_file, 'r')
         low_phis = low_phi.readlines()
         high_phis = high_phi.readlines()
         
@@ -62,79 +104,20 @@ class NuObs:
             raise IndexError("PHI bounds must have the same length!")
         
         for idx in range(len(low_phis)):
-            self.phi_bounds.append((low_phis[idx].replace('\n', ''), high_phis[idx].replace('\n', '')))
+            phi_bounds.append((low_phis[idx].replace('\n', ''), high_phis[idx].replace('\n', '')))
+        
+        return phi_bounds
 
 
     def run_cleaning_script(self):
         """
-        In the event that a NuSTAR observation is recently taken, or has not had a proper data reduction process enacted, this 
-        method will run `nupipeline` on the unprocessed data to generate an `event_cl` directory with reduced data following 
-        Stage 1 and Stage 2 calibration.
-
-        Arguments
-        ---------
-        None
-
-        Returns
-        -------
-        None
-
-        Raises
-        ------
-        None
+        This script will run `nupipeline` on data that either lacks clean event files, or is determined 
+        to require reprocessing.
         """
         
         output_path = f"./{self.obsid}/event_cl/"
         os.mkdir(output_path)
         subprocess.run(["nupipeline", self.path, f"nu{self.obsid}", output_path])
-
-    
-    def generate_headerinfo(self):
-        """
-        This function reads in the header information of the A01 clean event file for the NuSTAR observation and catalogs
-        values which may be of relevance during data analysis.
-
-        Arguments
-        ---------
-        None
-
-        Returns
-        -------
-        dict
-            a dictionary containing the following keys: `OBJECT`, `DATE-OBS`, `RA_OBJ`, `DEC_OBJ`, `TSTART`, `TSTOP`, `TELAPSE`.
-            These keys represent the following values:
-            
-            OBJECT : accepted name for this object
-            DATE-OBS : the date during which the observation of this object was taken
-            RA_OBJ : the right-ascension at which the object was detected
-            DEC_OBJ : the declination at which the object was detected
-            TSTART : the time at which the observation began
-            TSTOP : the time at which the observation ended
-            TELAPSE : the total time which has elapsed during the observation
-            TIMES : the times at which an event occured
-            DTIMES : the elapsed time between two events
-
-        Raises
-        ------
-        None
-        """
-
-        header_info = {}
-        keys = ["OBJECT", "DATE-OBS", "RA_OBJ", "DEC_OBJ", "TSTART", "TSTOP", "TELAPSE"]
-        times = []
-        time_diffs = []
-
-        with fits.open(self.path + f"event_cl/nu{self.obsid}A01_cl.evt") as hdul:
-            for array in hdul[1].data:
-                times.append(array[0])
-                time_diffs.append(array[1])
-            for key in keys:
-                header_info[key] = hdul[1].header[key]
-            self.wcs = WCS(hdul[1].header)
-            header_info["TIMES"] = times
-            header_info["DTIMES"] = time_diffs
-        
-        return header_info
 
 
     def generate_timebins(self):
@@ -182,7 +165,6 @@ class NuObs:
             cur_int += self.dt 
         intervals_p2.append(max_int)
 
-
         # split data for PASS 1
         idx = 0
         first = True
@@ -208,7 +190,6 @@ class NuObs:
                     data_intervals_1[idx][2].append(datapoint)
                 else:
                     idx += 1
-
 
         # split data for PASS 2
         idx = 0
@@ -258,15 +239,15 @@ class NuObs:
         None
         """
 
-        if "detections" not in self.contents:
+        if "detections" not in self._contents:
             os.mkdir(self.path + "detections/")
-        detect_path = self.path + f"detections/{self.dt}-{self.snr}/"
-        if f"{self.dt}-{self.snr}" in os.listdir(self.path + "detections/"):
-            self.detect_info = self.read_detections()
+        detect_path = self._path + f"detections/{self._dtime}-{self._snr}/"
+        if f"{self._dtime}-{self._snr}" in os.listdir(self._path + "detections/"):
+            self._detections = self.read_detections()
         else:
             os.mkdir(detect_path)
             # Begin by selecting the data which lies in the appropriate energy range.
-            for letter in ["A", "B"]:
+            for mod in self.modules:
                 # PASS 1
                 for interval in self.time_bins[0]:
                     if len(self.time_bins[0][interval][2]) == 0:
@@ -379,7 +360,7 @@ class NuObs:
                 script.write("exit\n")
             subprocess.run(["ximage", "@src_merge.xco"], cwd=self.path+f"detections/{self.dt}-{self.snr}/")
             subprocess.run(["rm", "src_merge.xco"], cwd=self.path+f"detections/{self.dt}-{self.snr}/")
-            self.detect_info = self.read_detections()
+            self._detections = self.read_detections()
 
 
     def read_detections(self):
@@ -658,8 +639,10 @@ class NuObs:
         This method generates a region file to be used for data analysis with a fits image.
         """
 
-    def generate_directory(self, overwrite=False)
-        
+    def generate_directory(self, overwrite=False):
+        """
+        Erases and creates a new directory
+        """
 
 
 
@@ -674,5 +657,5 @@ class NuObs:
 #    test = NuObs(obs[:-1], dt=10000)
 #    test.generate_detections()
 
-test = NuObs("30501002002", 10000)
+test = NuAnalysis("30501002002", 10000)
 test.plot_pha(7)
