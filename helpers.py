@@ -1,8 +1,6 @@
 import glob
 import os
-import shutil
 import subprocess
-from astropy.io import fits
 
 
 def generate_directory(path, overwrite=False):
@@ -17,6 +15,7 @@ def generate_directory(path, overwrite=False):
 
 def clear_directory(path):
     if os.path.isdir(path):
+        print(os.listdir(path))
         for file in os.listdir(path):
             os.remove(f"{path}/{file}")
     else:

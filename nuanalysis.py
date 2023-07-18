@@ -22,10 +22,13 @@ class NuAnalysis(Observation):
         self._clean = clean
         self._phi_bounds = self.read_in_phi_bounds("nustar_pilow.txt", "nustar_pihi.txt")
         self._refpath = path
+        self._refoutpath = out_path
         self._contents = os.listdir(path)
-        generate_directory(out_path, overwrite=True)
+        generate_directory(self._refoutpath, overwrite=False)
+        
+        #generate_directory(out_path, overwrite=True)
         if "event_cl" not in self._contents or not clean:
-            generate_directory(evdir)
+            generate_directory(evdir, overwrite=True)
             subprocess.run(["nupipeline", path, f"nu{seqid}", evdir])
             self._clean = True
         
@@ -120,7 +123,7 @@ class NuAnalysis(Observation):
         """
         
         generate_directory(self._evdir, overwrite=True)
-        subprocess.run(["nupipeline", self._refpath, f"nu{self._seqid}", self._evdir])
+        #subprocess.run(["nupipeline", self._refpath, f"nu{self._seqid}", self._evdir])
 
 
     def generate_timebins(self):
@@ -224,23 +227,11 @@ class NuAnalysis(Observation):
         The detections are calculated for each time bin defined in the `generate_timebins` method and are then aggregated.
         The directories underwhich the detection information is stored has the following syntax:
 
-        dir = "./obsid/detections/phi_low-phi_high-snr-t_low-t_high"
-
-        Arguments
-        ---------
-        None
-
-        Returns
-        -------
-        None
-
-        Raises
-        ------
-        None
+        dir = "./seqid/detections/phi_low-phi_high-dtime-snr/"
         """
 
         if "detections" not in self._contents:
-            os.mkdir(self._refpath + "/detections/")
+            os.mkdir(self._refpath + "detections/")
         
         if f"{self._dtime}-{self._snr}" in os.listdir(self._refpath + "detections/"):
             self._detections = self.read_detections()
@@ -252,9 +243,10 @@ class NuAnalysis(Observation):
                     detect_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
                     generate_directory(detect_path, overwrite=False)
                     for interval in self._time_bins[0]:
-                        print(mod, bound, interval)
+                        
                         if len(self._time_bins[0][interval][2]) == 0:
                             continue
+                        
                         with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
                             script.write('\n')
                             script.write('\n')
@@ -277,8 +269,10 @@ class NuAnalysis(Observation):
 
                     # PASS 2
                     for interval in self._time_bins[1]:
+                        
                         if len(self._time_bins[1][interval][2]) == 0:
                             continue
+                        
                         with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
                             script.write('\n')
                             script.write('\n')
@@ -303,8 +297,11 @@ class NuAnalysis(Observation):
             # PASS 1
             for bound in self._phi_bounds:
                 for interval in self._time_bins[0]:
+                    
+                    running_directory = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
                     if len(self._time_bins[0][interval][2]) == 0:
                         continue
+                    
                     with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
                         script.write(f"read/fits/size=800/nuA_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
                         script.write("save_image\n")
@@ -313,8 +310,9 @@ class NuAnalysis(Observation):
                         script.write("save_image\n")
                         script.write(f"write/fits nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
                         script.write("exit\n")
-                    subprocess.run(["ximage", "@ximage.xco"],cwd=self._refpath+f"./detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/")
-                    subprocess.run(["rm", "ximage.xco"], cwd=self._refpath+f"./detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/")
+                    subprocess.run(["ximage", "@ximage.xco"],cwd=running_directory)
+                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory)
+                    
                     # Now we perform detections.
                     with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/src_detect.xco", "w") as script:
                         script.write(f"read/fits/size=800/nuA_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
@@ -324,8 +322,8 @@ class NuAnalysis(Observation):
                         script.write("save_image\n")
                         script.write(f"detect/snr={self._snr}/filedet={self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.det/fitsdet={self.time_bins[0][interval][0]}-{self.time_bins[0][interval][1]}.fits\n")
                         script.write("exit\n")
-                    subprocess.run(["ximage", "@src_detect.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")#, 
-                    subprocess.run(["rm", "src_detect.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
+                    subprocess.run(["ximage", "@src_detect.xco"], cwd=running_directory) 
+                    subprocess.run(["rm", "src_detect.xco"], cwd=running_directory)
                 
                 # PASS 2
                 for interval in self._time_bins[1]:
@@ -339,8 +337,9 @@ class NuAnalysis(Observation):
                         script.write("save_image\n")
                         script.write(f"write/fits nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
                         script.write("exit\n")
-                    subprocess.run(["ximage", "@ximage.xco"],cwd=self._refpath+f"./detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/")
-                    subprocess.run(["rm", "ximage.xco"], cwd=self._refpath+f"./detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/")
+                    subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory)
+                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory)
+                    
                     # Now we perform detections.
                     with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/src_detect.xco", "w") as script:
                         script.write(f"read/fits/size=800/nuA_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
@@ -350,15 +349,14 @@ class NuAnalysis(Observation):
                         script.write("save_image\n")
                         script.write(f"detect/snr={self._snr}/filedet={self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.det/fitsdet={self.time_bins[1][interval][0]}-{self.time_bins[1][interval][1]}.fits\n")
                         script.write("exit\n")
-                    subprocess.run(["ximage", "@src_detect.xco"], cwd=self._refpath+f"./detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/")#, 
-                                                #capture_output=True, text=True)
-                    subprocess.run(["rm", "src_detect.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
+                    subprocess.run(["ximage", "@src_detect.xco"], cwd=running_directory)
+                    subprocess.run(["rm", "src_detect.xco"], cwd=running_directory)
             
             for bound in self.phi_bounds:
                 det_files = glob.glob(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/*.det")
                 file_strings = []
                 for file in det_files:
-                    file_strings.append(file.replace(f"{self._refpath}detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/", ''))
+                    file_strings.append(file.replace(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/", ''))
                 script_string = "srcmrg/out=mrg.txt/tolerance=5e1"
                 for file in file_strings:
                     script_string += f" {file}"
@@ -371,10 +369,9 @@ class NuAnalysis(Observation):
                         script.write("exit\n")
                     subprocess.run(["ximage", "@src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
                     subprocess.run(["rm", "src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
-                    #self._detections = self.read_detections()
 
 
-    def read_detections(self):
+    def read_unique_detections(self, bounds):
         """
         This method reads in the merged detection instances and populates a dictionary with all of the 
         recorded values for future use.
@@ -406,7 +403,10 @@ class NuAnalysis(Observation):
         None
         """
 
-        with open(self._refpath + f"/detections/{self._dtime}-{self._snr}/mrg.txt") as detections:
+        if "mrg.txt" not in os.listdir(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/"):
+            return None           
+
+        with open(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/mrg.txt") as detections:
             detect_info = {}
             detect_info["INDEX"] = []
             detect_info["COUNTS"] = []
@@ -435,6 +435,87 @@ class NuAnalysis(Observation):
                 detect_info["SNR"].append(line_info[14])
         
         return detect_info
+
+
+    def read_detection_dir(self, bounds):
+        det_files = glob.glob(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/*.det")
+        detect_info = {}
+        for file in det_files:
+            with open(file) as detections:
+                for i in range(14):
+                    detections.readline()
+                times = tuple(file.replace(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/", '').replace(".det", '').split(sep="-"))
+                detect_info[times] = {}
+                detect_info[times]["INDEX"] = []
+                detect_info[times]["COUNTS"] = []
+                detect_info[times]["XPIX"] = []
+                detect_info[times]["YPIX"] = []
+                detect_info[times]["VIGCOR"] = []
+                detect_info[times]["RA"] = []
+                detect_info[times]["DEC"] = []
+                detect_info[times]["ERR"] = []
+                detect_info[times]["HBOX"] = []
+                detect_info[times]["PROB"] = []
+                detect_info[times]["SNR"] = []
+                detect_info[times]["FILE"] = []
+
+                for line in detections:
+                    line_info = line.split()
+                    detect_info[times]["FILE"].append(file)
+                    detect_info[times]["INDEX"].append(line_info[0])
+                    detect_info[times]["COUNTS"].append(line_info[1])
+                    detect_info[times]["XPIX"].append(line_info[2])
+                    detect_info[times]["YPIX"].append(line_info[3])
+                    detect_info[times]["VIGCOR"].append(line_info[4])
+                    detect_info[times]["RA"].append(f"{line_info[5]} {line_info[6]} {line_info[7]}")
+                    detect_info[times]["DEC"].append(f"{line_info[8]} {line_info[9]} {line_info[10]}")
+                    detect_info[times]["ERR"].append(line_info[11])
+                    detect_info[times]["HBOX"].append(line_info[12])
+                    detect_info[times]["PROB"].append(line_info[13])
+                    detect_info[times]["SNR"].append(line_info[14])
+
+        return detect_info
+
+    
+    def remove_main_source(self, detect_info):
+        trimmed_detect_info = {}        
+        for key in detect_info:
+            trimmed_detect_info[key] = []
+        
+        for i in detect_info["INDEX"]:
+            ra = detect_info["RA"][int(i) - 1]
+            dec = detect_info["DEC"][int(i) - 1]
+            c = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg))
+            if self._source_position.separation(c).arcsec > 200:
+                for key in detect_info:
+                    trimmed_detect_info[key].append(detect_info[key][int(i) - 1])
+        return trimmed_detect_info
+    
+    
+    def detection_dir_processing(self, bounds):
+        unique_detect_info = self.read_unique_detections(bounds)
+        if unique_detect_info == None:
+            return None
+        all_detect_info = self.read_detection_dir(bounds)
+        
+        # Begin by eliminating the main source
+        trimmed_detect_info = self.remove_main_source(unique_detect_info)
+        
+        # Now remove duplicates and save time slots
+        trimmed_all_info = {}
+        for key in trimmed_detect_info:
+            trimmed_all_info[key] = []
+        trimmed_all_info["TIMES"] = []
+        
+        for time in all_detect_info:
+            for idx in all_detect_info[time]["INDEX"]:
+                if all_detect_info[time]["XPIX"][int(idx) - 1] in trimmed_detect_info["XPIX"]:
+                    for key in trimmed_detect_info:
+                        trimmed_all_info[key].append(all_detect_info[time][key][int(idx) - 1])
+                    trimmed_all_info["TIMES"].append(time)
+        
+        self._detections = trimmed_all_info
+        return trimmed_all_info
 
 
     #def plot_temporal_differences(self, save_fig=False, display_fig=True):
@@ -497,17 +578,16 @@ class NuAnalysis(Observation):
 
 
     def nuproducts(self, detect_info):
-        for time in detect_info:
-            for idx in detect_info[time]["INDEX"]:
-                coords = self.ra_dec_todeg(detect_info[time]["RA"][int(idx) - 1], detect_info[time]["DEC"][int(idx) - 1])
-                string = f"nuproducts indir=./event_cl instrument=FPMA steminputs=nu{self._seqid} outdir=./products/{idx} srcra={coords[0]} srcdec={coords[1]} bkgra={coords[0]} bkgdec={coords[1]} binsize=5 usrgtifile=detections/559-1934_10000-3/{time[0]}_{time[1]}_gti.hnd_gti"
-                string = f"nuproducts indir=./event_cl instrument=FPMB steminputs=nu{self._seqid} outdir=./products/{idx} srcra={coords[0]} srcdec={coords[1]} bkgra={coords[0]} bkgdec={coords[1]} binsize=5 usrgtifile=detections/559-1934_10000-3/{time[0]}_{time[1]}_gti.hnd_gti"
-                #print(self._refpath)
-                subprocess.run(string.split(), cwd=self._refpath)
-
-
-    def remove_main_source(self):
-        pass
+        detect_info = self._detections
+        generate_directory(self._out_path)
+        for times in set(detect_info["TIMES"]):
+            generate_gti_files(self._refoutpath, times[0], times[1])
+        print(self._refpath)
+        for idx in range(len(detect_info["INDEX"])):
+            coords = self.ra_dec_todeg(detect_info["RA"][int(idx)], detect_info["DEC"][int(idx)])
+            string = f"nuproducts indir=./event_cl instrument=FPMA steminputs=nu{self._seqid} outdir=./products/{idx} srcra={coords[0]} srcdec={coords[1]} bkgra={coords[0]} bkgdec={coords[1]} binsize=5 usrgtifile=./products/{detect_info['TIMES'][idx][0]}_{detect_info['TIMES'][idx][1]}_gti.hnd_gti"
+            string = f"nuproducts indir=./event_cl instrument=FPMB steminputs=nu{self._seqid} outdir=./products/{idx} srcra={coords[0]} srcdec={coords[1]} bkgra={coords[0]} bkgdec={coords[1]} binsize=5 usrgtifile=./products/{detect_info['TIMES'][idx][0]}_{detect_info['TIMES'][idx][1]}_gti.hnd_gti"
+            subprocess.run(string.split(), cwd=self._refpath)
 
 
     def ra_dec_todeg(self, ra, dec):
@@ -646,62 +726,11 @@ class NuAnalysis(Observation):
         plt.show()
     
 
-    def generate_background_rate(self):
-        """
-        This method calls an algorithm for identifying the background rates for a given fits image 
-        by energy range. Four background regions are defined for a given FITS image and these 
-        background regions individually are analyzed to determine a distribution of count rates. 
-        The median of the four regions is then taken and turned into a background rate distribution.
-        """
-        pass
-
-    
     def generate_region(self, path, xpix, ypix):
         """
         This method generates a region file to be used for data analysis with a fits image.
         """
         pass
 
-    def generate_directory(self, overwrite=False):
-        """
-        Erases and creates a new directory
-        """
-        pass
-
-    def read_detection_dir(path):
-        
-        det_files = glob.glob("path")
-        detect_info = {}
-        for file in det_files:
-            with open(file) as detections:
-                for i in range(14):
-                    detections.readline()
-                
-                detect_info["INDEX"] = []
-                detect_info["COUNTS"] = []
-                detect_info["XPIX"] = []
-                detect_info["YPIX"] = []
-                detect_info["VIGCOR"] = []
-                detect_info["RA"] = []
-                detect_info["DEC"] = []
-                detect_info["ERR"] = []
-                detect_info["HBOX"] = []
-                detect_info["PROB"] = []
-                detect_info["SNR"] = []
-
-                for line in detections:
-                    line_info = line.split()
-                    detect_info["INDEX"].append(line_info[0])
-                    detect_info["COUNTS"].append(line_info[1])
-                    detect_info["XPIX"].append(line_info[2])
-                    detect_info["YPIX"].append(line_info[3])
-                    detect_info["VIGCOR"].append(line_info[4])
-                    detect_info["RA"].append(f"{line_info[5]} {line_info[6]} {line_info[7]}")
-                    detect_info["DEC"].append(f"{line_info[8]} {line_info[9]} {line_info[10]}")
-                    detect_info["ERR"].append(line_info[11])
-                    detect_info["HBOX"].append(line_info[12])
-                    detect_info["PROB"].append(line_info[13])
-                    detect_info["SNR"].append(line_info[14])
-
-        return detect_info
+    
 
