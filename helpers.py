@@ -144,4 +144,5 @@ def generate_gti_files(path, tstart, tstop):
     subprocess.run(["rm", "xselect.xco"], cwd=path, capture_output=False)
 
 
-    
+def chan_to_energy(chan):
+    return chan * 0.04 + 1.6

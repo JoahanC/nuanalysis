@@ -475,6 +475,15 @@ class NuAnalysis(Observation):
                     detect_info[times]["SNR"].append(line_info[14])
 
         return detect_info
+    
+    
+    def extract_detections(self):
+        """
+        Runs the `nuproducts` extraction procedure for all unique detections.
+        """
+
+        for bounds in self.phi_bounds:
+            self.nuproducts(self.detection_dir_processing(bounds), bounds)
 
     
     def remove_main_source(self, detect_info):
@@ -486,7 +495,7 @@ class NuAnalysis(Observation):
             ra = detect_info["RA"][int(i) - 1]
             dec = detect_info["DEC"][int(i) - 1]
             c = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg))
-            if self._source_position.separation(c).arcsec > 200:
+            if self._source_position.separation(c).arcsec > 150:
                 for key in detect_info:
                     trimmed_detect_info[key].append(detect_info[key][int(i) - 1])
         return trimmed_detect_info
@@ -550,43 +559,22 @@ class NuAnalysis(Observation):
     #        plt.savefig(self.path + f"event_cl/elapsed_livetime.pdf", dpi=1000)
     #    if display_fig:
     #        plt.show()
-    
-
-    def extract_detections(self):
-        """
-        This method runs `nuproducts` on all valid detections found within the /detections/ directory
-
-        Arguments
-        ---------
-        None
-
-        Returns
-        -------
-        None
-
-        Raises
-        ------
-        None
-        """
-
-        self._detections = self.read_detections()
-        for idx in self.detect_info["INDEX"]:
-            coords = self.ra_dec_todeg(self.detections["RA"][int(idx) - 1], self.detections["DEC"][int(idx) - 1])
-            string = f"nuproducts indir=./event_cl instrument=FPMA steminputs=nu{self.obsid} outdir=./products/{idx} srcra={coords[0]} srcdec={coords[1]} bkgra={coords[0]} bkgdec={coords[1]} binsize=5"
-            string = f"nuproducts indir=./event_cl instrument=FPMB steminputs=nu{self.obsid} outdir=./products/{idx} srcra={coords[0]} srcdec={coords[1]} bkgra={coords[0]} bkgdec={coords[1]} binsize=5"
-            subprocess.run(string.split(), cwd=self._refpath)
 
 
-    def nuproducts(self, detect_info):
+    def nuproducts(self, detect_info, pi_bounds):
+        
         detect_info = self._detections
         generate_directory(self._out_path)
+        gti_files = glob.glob(self._refpath + f"products/*.hnd_gti")
+        
         for times in set(detect_info["TIMES"]):
-            generate_gti_files(self._refoutpath, times[0], times[1])
-        print(self._refpath)
+            if self._refpath + f"products/{times[0]}_{times[1]}_gti.hnd_gti" not in gti_files:
+                generate_gti_files(self._refoutpath, times[0], times[1])
+        
         for idx in range(len(detect_info["INDEX"])):
             coords = self.ra_dec_todeg(detect_info["RA"][int(idx)], detect_info["DEC"][int(idx)])
-            string = f"nuproducts indir=./event_cl instrument=FPMA steminputs=nu{self._seqid} outdir=./products/{idx} srcra={coords[0]} srcdec={coords[1]} bkgra={coords[0]} bkgdec={coords[1]} binsize=5 usrgtifile=./products/{detect_info['TIMES'][idx][0]}_{detect_info['TIMES'][idx][1]}_gti.hnd_gti"
-            string = f"nuproducts indir=./event_cl instrument=FPMB steminputs=nu{self._seqid} outdir=./products/{idx} srcra={coords[0]} srcdec={coords[1]} bkgra={coords[0]} bkgdec={coords[1]} binsize=5 usrgtifile=./products/{detect_info['TIMES'][idx][0]}_{detect_info['TIMES'][idx][1]}_gti.hnd_gti"
+            string = f"nuproducts indir=./event_cl instrument=FPMA steminputs=nu{self._seqid} outdir=./products/{pi_bounds[0]}_{pi_bounds[1]}/{idx} srcra={coords[0]} srcdec={coords[1]} bkgra={coords[0]} bkgdec={coords[1]} binsize=5 usrgtifile=./products/{detect_info['TIMES'][idx][0]}_{detect_info['TIMES'][idx][1]}_gti.hnd_gti"
+            string = f"nuproducts indir=./event_cl instrument=FPMB steminputs=nu{self._seqid} outdir=./products/{pi_bounds[0]}_{pi_bounds[1]}/{idx} srcra={coords[0]} srcdec={coords[1]} bkgra={coords[0]} bkgdec={coords[1]} binsize=5 usrgtifile=./products/{detect_info['TIMES'][idx][0]}_{detect_info['TIMES'][idx][1]}_gti.hnd_gti"
             subprocess.run(string.split(), cwd=self._refpath)
 
 
@@ -614,24 +602,6 @@ class NuAnalysis(Observation):
         return (c.ra.deg, c.dec.deg)
 
 
-    def ds9_detection(self, mod='B', n=1):
-        """
-        Spawns an instance of ds9 which showcases a specific detection.
-
-        Arguments
-        ---------
-        n : int
-            The index associated with this element
-
-        Returns:
-        --------
-
-        Raises
-        ------
-        """
-        pass
-
-
     def ds9_detections(self, mod='B'):
         """
         Displays all of the detections that were processed by nuproducts into an instance of ds9.
@@ -645,7 +615,7 @@ class NuAnalysis(Observation):
         return ds9_string
     
 
-    def acquire_lightcurve(self, n=1):
+    def acquire_lightcurve(self, pilow, pihi, n):
         """
         Returns a dictionary containing the background-subtracted lightcurve data.
 
@@ -661,7 +631,7 @@ class NuAnalysis(Observation):
         ------
         """
 
-        fits_file = self._refpath + f"products/{n}/nu{self._seqid}B01.flc"
+        fits_file = self._refpath + f"products/{pilow}_{pihi}/{n}/nu{self._seqid}B01.flc"
         lc_data = {}
         lc_data["TIME"] = []
         lc_data["RATE"] = []
@@ -675,16 +645,16 @@ class NuAnalysis(Observation):
         return lc_data
 
 
-    def acquire_pha(self, n=1):
+    def acquire_pha(self, pilow, pihi, n):
         """
         """
-        pha_file = self._refpath + f"products/{n}/nu{self._seqid}B01_sr.pha"
+        pha_file = self._refpath + f"products/{pilow}_{pihi}/{n}/nu{self._seqid}B01_sr.pha"
         with fits.open(pha_file) as hdul:
             pha_data = hdul[1].data
         return pha_data
 
 
-    def plot_lightcurve(self, n=1):
+    def plot_lightcurve(self, pilow, pihi, n):
         """
         Plots the background subtracted lightcurve of a detection.
 
@@ -700,27 +670,31 @@ class NuAnalysis(Observation):
         ------
         """
 
-        lc_data = self.acquire_lightcurve(n)
+        lc_data = self.acquire_lightcurve(pilow, pihi, n)
         fig, ax = plt.subplots()
         ax.errorbar(lc_data["TIME"], lc_data["RATE"], lc_data["RATEERR"], fmt='o', lw=0.5, markersize=2)
         ax.set_xlabel("Time (s)")
         ax.set_ylabel("Counts/Time (c/s)")
+        kev_low = chan_to_energy(pilow)
+        kev_high = chan_to_energy(pihi)
+        ax.set_title("Background Subtracted Lightcurve", loc="left")
+        ax.set_title(f"Energy Range: {kev_low} - {kev_high}", loc="right")
         plt.show()
 
 
-    def plot_pha(self, n=1):
+    def plot_pha(self, pilow, pihi, n):
         """
         """
 
-        pha_data = self.acquire_pha(n)
+        pha_data = self.acquire_pha(pilow, pihi, n)
         fig, ax = plt.subplots()
         y_dat = []
         x_dat = []
+        first_key = list(self._exposure.keys())[0]
         for datum in pha_data:
-            x_dat.append(datum[0] * 0.04 + 1.6)
-            y_dat.append(datum[1]/44034)
+            x_dat.append(chan_to_energy(datum[0]))
+            y_dat.append(datum[1]/self._exposure[first_key])
         ax.plot(x_dat, y_dat)
-        ax.set_xlim(3, 79)
         ax.set_xlabel("Time (s)")
         ax.set_ylabel("Counts/Time (c/s)")
         plt.show()
