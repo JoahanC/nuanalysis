@@ -11,3 +11,4 @@ evdir = f"{path}event_cl/"
 out_path = f"{path}products/"
 test = NuAnalysis(10000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True)
 test.generate_detections()
+test.extract_detections()

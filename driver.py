@@ -1,6 +1,6 @@
 from nuanalysis import *
 
-seqid = "30501002002"
+seqid = "90901325002"
 path = f"../data/{seqid}/"
 evdir = f"{path}event_cl/"
 out_path = f"{path}products/"
