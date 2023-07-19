@@ -563,6 +563,9 @@ class NuAnalysis(Observation):
 
     def nuproducts(self, detect_info, pi_bounds):
         
+        if detect_info == None:
+            print("Oh no! No detections!")
+
         detect_info = self._detections
         generate_directory(self._out_path)
         gti_files = glob.glob(self._refpath + f"products/*.hnd_gti")
