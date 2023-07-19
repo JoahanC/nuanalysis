@@ -179,7 +179,6 @@ class NuAnalysis(Observation):
                 data_intervals_1[idx] = [intervals_p1[idx], intervals_p1[idx + 1], data]
                 data_intervals_1[idx][2].append(datapoint)
                 first = False
-                idx += 1
                 continue
             if datapoint == last:
                 data_intervals_1[idx][2].append(datapoint)
@@ -206,7 +205,6 @@ class NuAnalysis(Observation):
                 data_intervals_2[idx] = [intervals_p2[idx], intervals_p2[idx + 1], data]
                 data_intervals_2[idx][2].append(datapoint)
                 first = False
-                idx += 1
                 continue
             if datapoint == last:
                 data_intervals_2[idx][2].append(datapoint)
@@ -245,7 +243,7 @@ class NuAnalysis(Observation):
                     detect_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
                     generate_directory(detect_path, overwrite=False)
                     for interval in self._time_bins[0]:
-                        
+                        print(self._time_bins[0][interval][0], self._time_bins[0][interval][1])
                         if len(self._time_bins[0][interval][2]) == 0:
                             continue
                         
@@ -266,12 +264,12 @@ class NuAnalysis(Observation):
                             script.write('\n')
                             script.write("exit no")
                             script.write('\n')
-                        subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
-                        subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
+                        subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir)#, capture_output=True)
+                        subprocess.run(["rm", "xselect.xco"], cwd=self._evdir)#, capture_output=True)
 
                     # PASS 2
                     for interval in self._time_bins[1]:
-                        
+                        print(self._time_bins[1][interval][0], self._time_bins[1][interval][1])
                         if len(self._time_bins[1][interval][2]) == 0:
                             continue
                         
@@ -292,9 +290,9 @@ class NuAnalysis(Observation):
                             script.write('\n')
                             script.write("exit no")
                             script.write('\n')
-                        subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
-                        subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
-
+                        subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir)#, capture_output=True)
+                        subprocess.run(["rm", "xselect.xco"], cwd=self._evdir)#, capture_output=True)
+            pass
             # Now we merge the FPMA and FPMB data together into one file structure.
             # PASS 1
             for bound in self._phi_bounds:
