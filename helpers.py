@@ -146,3 +146,9 @@ def generate_gti_files(path, tstart, tstop):
 
 def chan_to_energy(chan):
     return chan * 0.04 + 1.6
+
+
+def remove_tmp_folders(path):
+    tmp_dirs = glob.glob(path + "*tmp_nuproducts")
+    for dir in tmp_dirs:
+        subprocess.run(["rm", "-rf", dir])

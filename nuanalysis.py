@@ -371,6 +371,207 @@ class NuAnalysis(Observation):
                     subprocess.run(["rm", "src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
 
 
+    def test_gen(self):
+        """
+        This method generates a series of detection searches after first stacking and restricting the PI channels 
+        of the clean event files using `xselect`, afterwhich it runs a sliding cell detection algorithm using `ximage` 
+        The detections are calculated for each time bin defined in the `generate_timebins` method and are then aggregated.
+        The directories underwhich the detection information is stored has the following syntax:
+
+        dir = "./seqid/detections/phi_low-phi_high-dtime-snr/"
+        """
+
+        if "detections" not in self._contents:
+            os.mkdir(self._refpath + "detections/")
+        
+        # Begin by selecting the data which lies in the appropriate energy range.
+        for mod in self.modules:
+            for bound in self._phi_bounds:
+                detect_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
+                generate_directory(detect_path, overwrite=False)
+                with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
+                    script.write('\n')
+                    script.write('\n')
+                    script.write(f"read events nu{self._seqid}{mod}01_cl.evt\n")
+                    script.write("./\n")
+                    script.write('yes\n')
+                    script.write("filter PHA_CUTOFF\n")
+                    script.write(f"{bound[0]}\n")
+                    script.write(f"{bound[1]}\n")
+                    script.write("filter time scc\n")
+                    script.write(f"{self._time_bins[0][0][0]} , {self._time_bins[0][0][1]}\n")
+                    script.write("x\n")
+                    script.write("extract events\n")
+                    script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu{mod}_{self._time_bins[0][0][0]}-{self._time_bins[0][0][1]}.evt\n")
+                    script.write('\n')
+                    script.write("clear data\n")
+                    script.write("clear events\n")
+    
+                for interval in list(self._time_bins[0].keys())[1:len(self._time_bins[0].keys()) - 1]:
+                    if len(self._time_bins[0][interval][2]) == 0:
+                        continue
+                    
+                    with open(self._refpath + "/event_cl/xselect.xco", 'a') as script:
+                        script.write('\n')
+                        script.write('\n')
+                        script.write(f"read events nu{self._seqid}{mod}01_cl.evt\n")
+                        script.write("extract events\n")
+                        script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu{mod}_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                        script.write('\n')
+                        script.write("clear data\n")
+                        script.write("clear events\n")
+                
+                interval = list(self._time_bins[0].keys())[-1]
+                with open(self._refpath + "/event_cl/xselect.xco", 'a') as script:
+                        script.write('\n')
+                        script.write('\n')
+                        script.write(f"read events nu{self._seqid}{mod}01_cl.evt\n")
+                        script.write("extract events\n")
+                        script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu{mod}_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                        script.write('\n')
+                        script.write("exit no\n")
+
+                with open(self._refpath + "/event_cl/xselect.xco", 'a') as script:
+                    script.write('\n')
+                    script.write('\n')
+                    script.write(f"read events nu{self._seqid}{mod}01_cl.evt\n")
+                    script.write("./\n")
+                    script.write('yes\n')
+                    script.write("filter PHA_CUTOFF\n")
+                    script.write(f"{bound[0]}\n")
+                    script.write(f"{bound[1]}\n")
+                    script.write("filter time scc\n")
+                    script.write(f"{self._time_bins[1][0][0]} , {self._time_bins[1][0][1]}\n")
+                    script.write("x\n")
+                    script.write("extract events\n")
+                    script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu{mod}_{self._time_bins[1][0][0]}-{self._time_bins[1][0][1]}.evt\n")
+                    script.write('\n')
+                    script.write("clear data\n")
+                    script.write("clear events\n")
+    
+                for interval in list(self._time_bins[1].keys())[1:len(self._time_bins[1].keys()) - 1]:
+                    if len(self._time_bins[1][interval][2]) == 0:
+                        continue
+                    
+                    with open(self._refpath + "/event_cl/xselect.xco", 'a') as script:
+                        script.write('\n')
+                        script.write('\n')
+                        script.write(f"read events nu{self._seqid}{mod}01_cl.evt\n")
+                        script.write("extract events\n")
+                        script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu{mod}_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                        script.write('\n')
+                        script.write("clear data\n")
+                        script.write("clear events\n")
+                
+                interval = list(self._time_bins[1].keys())[-1]
+                with open(self._refpath + "/event_cl/xselect.xco", 'a') as script:
+                        script.write('\n')
+                        script.write('\n')
+                        script.write(f"read events nu{self._seqid}{mod}01_cl.evt\n")
+                        script.write("extract events\n")
+                        script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu{mod}_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                        script.write('\n')
+                        script.write("exit no\n")
+                
+                subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir)
+                subprocess.run(["rm", "xselect.xco"], cwd=self._evdir)
+        
+        # Now we merge the FPMA and FPMB data together into one file structure.
+        # PASS 1
+        for bound in self._phi_bounds:
+
+            running_directory = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
+            with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
+                script.write(f"read/fits/size=800/nuA_{self._time_bins[0][0][0]}-{self._time_bins[0][0][1]}.evt\n")
+                script.write("save_image\n")
+                script.write(f"read/fits/size=800/nuB_{self._time_bins[0][0][0]}-{self._time_bins[0][0][1]}.evt\n")
+                script.write("sum_image\n")
+                script.write("save_image\n")
+                script.write(f"write/fits nu_{self._time_bins[0][0][0]}-{self._time_bins[0][0][1]}.evt\n")
+                script.write("\n")
+                script.write("free_saved\n")
+                script.write("\n")
+
+            for interval in list(self._time_bins[0].keys())[:len(self._time_bins[0].keys()) - 1]:
+                if len(self._time_bins[0][interval][2]) == 0:
+                        continue
+                with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'a') as script:
+                    script.write(f"read/fits/size=800/nuA_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                    script.write("save_image\n")
+                    script.write(f"read/fits/size=800/nuB_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                    script.write("sum_image\n")
+                    script.write("save_image\n")
+                    script.write(f"write/fits nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                    script.write("\n")
+                    script.write("free_saved\n")
+                    script.write("\n")
+            
+            interval = list(self._time_bins[0].keys())[-1]
+            with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'a') as script:
+                script.write(f"read/fits/size=800/nuA_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                script.write("save_image\n")
+                script.write(f"read/fits/size=800/nuB_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                script.write("sum_image\n")
+                script.write("save_image\n")
+                script.write(f"write/fits nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                script.write("exit\n")
+
+            with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'a') as script:
+                script.write(f"read/fits/size=800/nuA_{self._time_bins[1][0][0]}-{self._time_bins[1][0][1]}.evt\n")
+                script.write("save_image\n")
+                script.write(f"read/fits/size=800/nuB_{self._time_bins[1][0][0]}-{self._time_bins[1][0][1]}.evt\n")
+                script.write("sum_image\n")
+                script.write("save_image\n")
+                script.write(f"write/fits nu_{self._time_bins[1][0][0]}-{self._time_bins[1][0][1]}.evt\n")
+                script.write("\n")
+                script.write("free_saved\n")
+                script.write("\n")
+
+            for interval in list(self._time_bins[1].keys())[:len(self._time_bins[1].keys()) - 1]:
+                if len(self._time_bins[1][interval][2]) == 0:
+                        continue
+                with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'a') as script:
+                    script.write(f"read/fits/size=800/nuA_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                    script.write("save_image\n")
+                    script.write(f"read/fits/size=800/nuB_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                    script.write("sum_image\n")
+                    script.write("save_image\n")
+                    script.write(f"write/fits nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                    script.write("\n")
+                    script.write("free_saved\n")
+                    script.write("\n")
+            
+            interval = list(self._time_bins[1].keys())[-1]
+            with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'a') as script:
+                script.write(f"read/fits/size=800/nuA_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                script.write("save_image\n")
+                script.write(f"read/fits/size=800/nuB_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                script.write("sum_image\n")
+                script.write("save_image\n")
+                script.write(f"write/fits nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                script.write("exit\n")
+            subprocess.run(["ximage", "@ximage.xco"],cwd=running_directory)
+            subprocess.run(["rm", "ximage.xco"], cwd=running_directory)
+        
+        for bound in self.phi_bounds:
+            det_files = glob.glob(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/*.det")
+            file_strings = []
+            for file in det_files:
+                file_strings.append(file.replace(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/", ''))
+            script_string = "srcmrg/out=mrg.txt/tolerance=5e1"
+            for file in file_strings:
+                script_string += f" {file}"
+            script_string += "\n"
+            if len(file_strings) == 0:
+                print("No detections found!")
+            else:
+                with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/src_merge.xco", 'w') as script:
+                    script.write(script_string)
+                    script.write("exit\n")
+                subprocess.run(["ximage", "@src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
+                subprocess.run(["rm", "src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
+
+
     def read_unique_detections(self, bounds):
         """
         This method reads in the merged detection instances and populates a dictionary with all of the 
