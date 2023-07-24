@@ -488,6 +488,7 @@ class NuAnalysis(Observation):
                 script.write("sum_image\n")
                 script.write("save_image\n")
                 script.write(f"write/fits nu_{self._time_bins[0][0][0]}-{self._time_bins[0][0][1]}.evt\n")
+                script.write(f"detect/snr={self._snr}/filedet={self._time_bins[0][0][0]}-{self._time_bins[0][0][1]}.det/fitsdet={self.time_bins[0][0][0]}-{self.time_bins[0][0][1]}.fits\n")
                 script.write("\n")
                 script.write("free_saved\n")
                 script.write("\n")
@@ -502,6 +503,7 @@ class NuAnalysis(Observation):
                     script.write("sum_image\n")
                     script.write("save_image\n")
                     script.write(f"write/fits nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                    script.write(f"detect/snr={self._snr}/filedet={self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.det/fitsdet={self.time_bins[0][interval][0]}-{self.time_bins[0][interval][1]}.fits\n")
                     script.write("\n")
                     script.write("free_saved\n")
                     script.write("\n")
@@ -514,6 +516,7 @@ class NuAnalysis(Observation):
                 script.write("sum_image\n")
                 script.write("save_image\n")
                 script.write(f"write/fits nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                script.write(f"detect/snr={self._snr}/filedet={self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.det/fitsdet={self.time_bins[0][interval][0]}-{self.time_bins[0][interval][1]}.fits\n")
                 script.write("exit\n")
 
             with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'a') as script:
@@ -523,6 +526,7 @@ class NuAnalysis(Observation):
                 script.write("sum_image\n")
                 script.write("save_image\n")
                 script.write(f"write/fits nu_{self._time_bins[1][0][0]}-{self._time_bins[1][0][1]}.evt\n")
+                script.write(f"detect/snr={self._snr}/filedet={self._time_bins[1][0][0]}-{self._time_bins[1][0][1]}.det/fitsdet={self.time_bins[1][0][0]}-{self.time_bins[1][0][1]}.fits\n")
                 script.write("\n")
                 script.write("free_saved\n")
                 script.write("\n")
@@ -537,6 +541,7 @@ class NuAnalysis(Observation):
                     script.write("sum_image\n")
                     script.write("save_image\n")
                     script.write(f"write/fits nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                    script.write(f"detect/snr={self._snr}/filedet={self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.det/fitsdet={self.time_bins[1][interval][0]}-{self.time_bins[1][interval][1]}.fits\n")
                     script.write("\n")
                     script.write("free_saved\n")
                     script.write("\n")
@@ -549,16 +554,18 @@ class NuAnalysis(Observation):
                 script.write("sum_image\n")
                 script.write("save_image\n")
                 script.write(f"write/fits nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                script.write(f"detect/snr={self._snr}/filedet={self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.det/fitsdet={self.time_bins[1][interval][0]}-{self.time_bins[1][interval][1]}.fits\n")
                 script.write("exit\n")
             subprocess.run(["ximage", "@ximage.xco"],cwd=running_directory)
             subprocess.run(["rm", "ximage.xco"], cwd=running_directory)
         
         for bound in self.phi_bounds:
             det_files = glob.glob(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/*.det")
+            print(det_files)
             file_strings = []
             for file in det_files:
                 file_strings.append(file.replace(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/", ''))
-            script_string = "srcmrg/out=mrg.txt/tolerance=5e1"
+            script_string = "srcmrg/out=mrg.txt/tolerance=1e1"
             for file in file_strings:
                 script_string += f" {file}"
             script_string += "\n"
@@ -684,6 +691,7 @@ class NuAnalysis(Observation):
         """
 
         for bounds in self.phi_bounds:
+            print(bounds)
             self.nuproducts(self.detection_dir_processing(bounds), bounds)
 
     
@@ -696,7 +704,7 @@ class NuAnalysis(Observation):
             ra = detect_info["RA"][int(i) - 1]
             dec = detect_info["DEC"][int(i) - 1]
             c = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg))
-            if self._source_position.separation(c).arcsec > 150:
+            if self._source_position.separation(c).arcsec > 50:
                 for key in detect_info:
                     trimmed_detect_info[key].append(detect_info[key][int(i) - 1])
         return trimmed_detect_info
@@ -766,6 +774,7 @@ class NuAnalysis(Observation):
         
         if detect_info == None:
             print("Oh no! No detections!")
+            return None
 
         detect_info = self._detections
         generate_directory(self._out_path)
