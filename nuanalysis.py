@@ -565,7 +565,7 @@ class NuAnalysis(Observation):
             file_strings = []
             for file in det_files:
                 file_strings.append(file.replace(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/", ''))
-            script_string = "srcmrg/out=mrg.txt/tolerance=1e1"
+            script_string = "srcmrg/out=mrg.txt/tolerance=2e1"
             for file in file_strings:
                 script_string += f" {file}"
             script_string += "\n"
@@ -734,40 +734,6 @@ class NuAnalysis(Observation):
         
         self._detections = trimmed_all_info
         return trimmed_all_info
-
-
-    #def plot_temporal_differences(self, save_fig=False, display_fig=True):
-    #    """
-    #    Plots the elapsed livetime for each event within the observation data.
-
-    #    Arguments
-    #    ---------
-    #    save_fig : bool
-    #        a flag which determines whether or not to save an image under the file name:
-    #        `elapsed_livetime.pdf`
-    #    display_fig : bool
-    #        a flag which determines whether of not to display an image when calling this method
-
-    #    Returns
-    #    -------
-    #    None
-
-    #    Raises
-    #    ------
-    #    None
-    #    """
-
-    #    plt.rcParams["font.family"] = "monospace"
-    #    fig, ax = plt.subplots()
-    #    ax.hist(self.header_info["DTIMES"], bins=10000)
-    #    ax.set_xlim(xmin=0, xmax = 0.1)
-    #    ax.set_title("Time since last detection")
-    #    ax.set_xlabel("Time (s)")
-    #    ax.set_ylabel("Number")
-    #    if save_fig:
-    #        plt.savefig(self.path + f"event_cl/elapsed_livetime.pdf", dpi=1000)
-    #    if display_fig:
-    #        plt.show()
 
 
     def nuproducts(self, detect_info, pi_bounds):
