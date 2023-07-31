@@ -282,6 +282,7 @@ def optimize_radius_snr(rind, rad_profile, radial_err, psf_profile,
     # Dumb little loop to step out in radius and find the best radius.
     # Keeps all values for plotting regardless of whether you set show=True (to be fixed?)
     # I'm lazy...
+    best_radius = rtest
     while rtest*dr < rlimit:
         rtest += 1
         area = np.pi*( rtest**2 - last_r**2) # area in pixels

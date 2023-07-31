@@ -57,10 +57,11 @@ class NuAnalysis(Observation):
         self.data = hdu.data
         self.coords = (hdu.header["RA_OBJ"], hdu.header["DEC_OBJ"])
         coordinates = radial_profile.find_source(self._refpath + "science.fits", show_image=False, filt_range=3)
+        
         rind, rad_profile, radial_err, psf_profile = radial_profile.make_radial_profile(self._refpath + "science.fits", show_image=False,
                                                                  coordinates = coordinates)
         self.rlimit = radial_profile.optimize_radius_snr(rind, rad_profile, radial_err, psf_profile, show=False)
-
+        print(self.rlimit)
         self._time_bins = self.generate_timebins()
         self._detections = None
 
@@ -954,7 +955,7 @@ class NuAnalysis(Observation):
             if detections == None:
                 n_det = 0
             if detections != None:
-                n_det = len(detections["INDEX"])
+                n_det = len(detections["INDEX"]) 
                 self.nuproducts(detections, bound)
             print(f"PI Channels: {bound[0]}-{bound[1]} -- {n_det} detections found.")
 
