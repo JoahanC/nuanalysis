@@ -1,4 +1,5 @@
 from astropy.time import Time, TimeDelta
+from astropy.wcs import WCS
 import astropy.units as u
 import os
 import subprocess
@@ -373,6 +374,8 @@ class Observation():
         for mod in self.modules:
             for evtfile in self.science_files[mod]:
                 hdr = getheader(evtfile)
+                hdr2 = getheader(evtfile, 1)
+                self.wcs = WCS(hdr2)
                 self._observation_date = Time(hdr['DATE-OBS'], format='fits')
                 self._source_position = \
                         SkyCoord(hdr['RA_OBJ'], hdr['DEC_OBJ'], unit='deg')

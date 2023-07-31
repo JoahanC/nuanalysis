@@ -9,6 +9,13 @@ from astropy.io import fits
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
+from tqdm import tqdm
+import radial_profile
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from regions import PixCoord
+from regions import CircleSkyRegion, CirclePixelRegion
+import astropy.visualization
 
 
 class NuAnalysis(Observation):
@@ -36,6 +43,23 @@ class NuAnalysis(Observation):
 
         if not self._clean:
             self.run_cleaning_script()
+
+        if "science.fits" not in self._contents:
+            print("Generating Science FITS image")
+            print(f"FILES: {self.science_files['A'][0]}, {self.science_files['B'][0]}")
+            infiles = f"{self.science_files['A'][0].replace(self._refpath, '')} , {self.science_files['B'][0].replace(self._refpath, '')}"
+            outfile = self._refpath + "science.fits"
+            make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79)
+            subprocess.run(["xselect", "@xsel.xco"])
+
+        hdu = fits.open(self._refpath + "science.fits", uint=True)[0]
+        self.wcs = WCS(hdu.header)
+        self.data = hdu.data
+        self.coords = (hdu.header["RA_OBJ"], hdu.header["DEC_OBJ"])
+        coordinates = radial_profile.find_source(self._refpath + "science.fits", show_image=False, filt_range=3)
+        rind, rad_profile, radial_err, psf_profile = radial_profile.make_radial_profile(self._refpath + "science.fits", show_image=False,
+                                                                 coordinates = coordinates)
+        self.rlimit = radial_profile.optimize_radius_snr(rind, rad_profile, radial_err, psf_profile, show=False)
 
         self._time_bins = self.generate_timebins()
         self._detections = None
@@ -82,6 +106,24 @@ class NuAnalysis(Observation):
         return self._detections
         
     # Methods begin below
+
+    def display_image(self):
+        ax = plt.subplot(projection=self.wcs)
+        im = ax.imshow(self.data, origin='lower')
+        center_sky = SkyCoord(self.coords[0], self.coords[1], unit='deg', frame='fk5')
+        region_sky = CircleSkyRegion(center=center_sky, radius=50*u.arcsecond)
+        pixel_region = region_sky.to_pixel(self.wcs)
+        pixel_region.plot(ax=ax, color="green")
+
+
+        ax.get_coords_overlay()
+
+        plt.colorbar(im)
+        plt.grid(True)
+        plt.xlabel('')
+        plt.ylabel('')
+        plt.show()
+
 
     def read_in_phi_bounds(self, pilow_file, pihi_file):
         """
@@ -181,8 +223,14 @@ class NuAnalysis(Observation):
                 first = False
                 continue
             if datapoint == last:
-                data_intervals_1[idx][2].append(datapoint)
-                break
+                if idx not in data_intervals_1:
+                    data = []
+                    data_intervals_1[idx] = [intervals_p1[idx], intervals_p1[idx + 1], data]
+                    data_intervals_1[idx][2].append(datapoint)
+                    break
+                else:
+                    data_intervals_1[idx][2].append(datapoint)
+                    break
             if datapoint > intervals_p1[idx] and datapoint <= intervals_p1[idx + 1]:
                 data_intervals_1[idx][2].append(datapoint)
             else:
@@ -207,8 +255,14 @@ class NuAnalysis(Observation):
                 first = False
                 continue
             if datapoint == last:
-                data_intervals_2[idx][2].append(datapoint)
-                break
+                if idx not in data_intervals_2:
+                    data = []
+                    data_intervals_2[idx] = [intervals_p2[idx], intervals_p2[idx + 1], data]
+                    data_intervals_2[idx][2].append(datapoint)
+                    break
+                else:
+                    data_intervals_2[idx][2].append(datapoint)
+                    break
             if datapoint > intervals_p2[idx] and datapoint <= intervals_p2[idx + 1]:
                 data_intervals_2[idx][2].append(datapoint)
             else:
@@ -235,15 +289,19 @@ class NuAnalysis(Observation):
         
         if f"{self._dtime}-{self._snr}" in os.listdir(self._refpath + "detections/"):
             self._detections = self.read_detections()
+        
         else:
             # Begin by selecting the data which lies in the appropriate energy range.
+            print("Beginning temporal and energy filtered event extraction.")
             for mod in self.modules:
                 for bound in self._phi_bounds:
                     # PASS 1
+                    n_timebins = len(list(self._time_bins[0].keys()))
+                    print(f"FPM{mod}: Processing the {bound[0]}-{bound[1]} PI channels")
                     detect_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
                     generate_directory(detect_path, overwrite=False)
-                    for interval in self._time_bins[0]:
-                        print(self._time_bins[0][interval][0], self._time_bins[0][interval][1])
+                    print(f"Processing first set of time bins: {n_timebins} detected.")
+                    for interval in tqdm(self._time_bins[0]):
                         if len(self._time_bins[0][interval][2]) == 0:
                             continue
                         
@@ -264,12 +322,13 @@ class NuAnalysis(Observation):
                             script.write('\n')
                             script.write("exit no")
                             script.write('\n')
-                        subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir)#, capture_output=True)
-                        subprocess.run(["rm", "xselect.xco"], cwd=self._evdir)#, capture_output=True)
+                        subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
+                        subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
 
                     # PASS 2
-                    for interval in self._time_bins[1]:
-                        print(self._time_bins[1][interval][0], self._time_bins[1][interval][1])
+                    n_timebins = len(list(self._time_bins[1].keys()))
+                    print(f"Processing second set of time bins: {n_timebins} detected.")
+                    for interval in tqdm(self._time_bins[1]):
                         if len(self._time_bins[1][interval][2]) == 0:
                             continue
                         
@@ -290,13 +349,15 @@ class NuAnalysis(Observation):
                             script.write('\n')
                             script.write("exit no")
                             script.write('\n')
-                        subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir)#, capture_output=True)
-                        subprocess.run(["rm", "xselect.xco"], cwd=self._evdir)#, capture_output=True)
+                        subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
+                        subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
             pass
             # Now we merge the FPMA and FPMB data together into one file structure.
             # PASS 1
+            print("Merging FPMA and FPMB data together")
             for bound in self._phi_bounds:
-                for interval in self._time_bins[0]:
+                print(f"FPM{mod}: Processing the {bound[0]}-{bound[1]} PI channel.")
+                for interval in tqdm(self._time_bins[0]):
                     
                     running_directory = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
                     if len(self._time_bins[0][interval][2]) == 0:
@@ -310,8 +371,8 @@ class NuAnalysis(Observation):
                         script.write("save_image\n")
                         script.write(f"write/fits nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
                         script.write("exit\n")
-                    subprocess.run(["ximage", "@ximage.xco"],cwd=running_directory)
-                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory)
+                    subprocess.run(["ximage", "@ximage.xco"],cwd=running_directory, capture_output=True)
+                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
                     
                     # Now we perform detections.
                     with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/src_detect.xco", "w") as script:
@@ -322,11 +383,11 @@ class NuAnalysis(Observation):
                         script.write("save_image\n")
                         script.write(f"detect/snr={self._snr}/filedet={self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.det/fitsdet={self.time_bins[0][interval][0]}-{self.time_bins[0][interval][1]}.fits\n")
                         script.write("exit\n")
-                    subprocess.run(["ximage", "@src_detect.xco"], cwd=running_directory) 
-                    subprocess.run(["rm", "src_detect.xco"], cwd=running_directory)
+                    subprocess.run(["ximage", "@src_detect.xco"], cwd=running_directory, capture_output=True) 
+                    subprocess.run(["rm", "src_detect.xco"], cwd=running_directory, capture_output=True)
                 
                 # PASS 2
-                for interval in self._time_bins[1]:
+                for interval in tqdm(self._time_bins[1]):
                     if len(self._time_bins[1][interval][2]) == 0:
                         continue
                     with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
@@ -337,8 +398,8 @@ class NuAnalysis(Observation):
                         script.write("save_image\n")
                         script.write(f"write/fits nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
                         script.write("exit\n")
-                    subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory)
-                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory)
+                    subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
+                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
                     
                     # Now we perform detections.
                     with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/src_detect.xco", "w") as script:
@@ -349,8 +410,8 @@ class NuAnalysis(Observation):
                         script.write("save_image\n")
                         script.write(f"detect/snr={self._snr}/filedet={self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.det/fitsdet={self.time_bins[1][interval][0]}-{self.time_bins[1][interval][1]}.fits\n")
                         script.write("exit\n")
-                    subprocess.run(["ximage", "@src_detect.xco"], cwd=running_directory)
-                    subprocess.run(["rm", "src_detect.xco"], cwd=running_directory)
+                    subprocess.run(["ximage", "@src_detect.xco"], cwd=running_directory, capture_output=True)
+                    subprocess.run(["rm", "src_detect.xco"], cwd=running_directory, capture_output=True)
             
             for bound in self.phi_bounds:
                 det_files = glob.glob(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/*.det")
@@ -565,7 +626,7 @@ class NuAnalysis(Observation):
             file_strings = []
             for file in det_files:
                 file_strings.append(file.replace(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/", ''))
-            script_string = "srcmrg/out=mrg.txt/tolerance=2e1"
+            script_string = "srcmrg/out=mrg.txt/tolerance=5e1"
             for file in file_strings:
                 script_string += f" {file}"
             script_string += "\n"
@@ -577,6 +638,325 @@ class NuAnalysis(Observation):
                     script.write("exit\n")
                 subprocess.run(["ximage", "@src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
                 subprocess.run(["rm", "src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
+
+
+    def test2_gen(self):
+        """
+        This method generates a series of detection searches after first stacking and restricting the PI channels 
+        of the clean event files using `xselect`, afterwhich it runs a sliding cell detection algorithm using `ximage` 
+        The detections are calculated for each time bin defined in the `generate_timebins` method and are then aggregated.
+        The directories underwhich the detection information is stored has the following syntax:
+
+        dir = "./seqid/detections/phi_low-phi_high-dtime-snr/"
+        """
+
+        if "detections" not in self._contents:
+            os.mkdir(self._refpath + "detections/")
+        
+        # Begin by selecting the data which lies in the appropriate energy range.
+        
+        for bound in self._phi_bounds:
+            detect_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
+            generate_directory(detect_path, overwrite=False)
+            for interval in tqdm(self._time_bins[0]):
+                if len(self._time_bins[0][interval][2]) == 0:
+                    continue
+                else:
+                    with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
+                        script.write('extraction\n')
+                        script.write(f"read events\n")
+                        script.write(".\n")
+                        script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
+                        script.write('yes\n')
+                        script.write("filter PHA_CUTOFF\n")
+                        script.write(f"{bound[0]}\n")
+                        script.write(f"{bound[1]}\n")
+                        script.write("filter time scc\n")
+                        script.write(f"{self._time_bins[0][interval][0]} , {self._time_bins[0][interval][1]}\n")
+                        script.write("x\n")
+                        script.write("extract events\n")
+                        script.write("\n")
+                        script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                        script.write('no\n')
+                        script.write("exit no\n")
+                    subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
+                    subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
+
+            """for interval in tqdm(self._time_bins[1]):
+                if len(self._time_bins[1][interval][2]) == 0:
+                    continue
+                else:
+                    with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
+                        script.write('extraction\n')
+                        script.write(f"read events\n")
+                        script.write(".\n")
+                        script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
+                        script.write('yes\n')
+                        script.write("filter PHA_CUTOFF\n")
+                        script.write(f"{bound[0]}\n")
+                        script.write(f"{bound[1]}\n")
+                        script.write("filter time scc\n")
+                        script.write(f"{self._time_bins[1][interval][0]} , {self._time_bins[1][interval][1]}\n")
+                        script.write("x\n")
+                        script.write("extract events\n")
+                        script.write("\n")
+                        script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                        script.write('no\n')
+                        script.write("exit no\n")
+                    subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
+                    subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)"""
+        
+        print("Performing sliding cell source detection on stacked images.")
+        for bound in self._phi_bounds:
+
+            running_directory = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
+            count = 0
+            for interval in tqdm(self._time_bins[0]):
+                if len(self._time_bins[0][interval][2]) <= 10:
+                    continue
+                else:
+                    with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
+                        script.write(f"read/fits/size=800/nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                        script.write(f"detect/snr={self._snr}/filedet={self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.det/fitsdet={self.time_bins[0][interval][0]}-{self.time_bins[0][interval][1]}.fits\n")
+                        script.write("exit")
+                    subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
+                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
+            """for interval in tqdm(self._time_bins[1]):
+                if len(self._time_bins[1][interval][2]) <= 10:
+                    continue
+                else:
+                    with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
+                        script.write(f"read/fits/size=800/nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                        script.write(f"detect/snr={self._snr}/filedet={self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.det/fitsdet={self.time_bins[1][interval][0]}-{self.time_bins[1][interval][1]}.fits\n")
+                        script.write("exit")
+                    subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
+                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)"""
+            
+            
+        print("Merging together results to find unique detections.")
+        for bound in self.phi_bounds:
+            det_files = glob.glob(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/*.det")
+            file_strings = []
+            for file in det_files:
+                file_strings.append(file.replace(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/", ''))
+            script_string = "srcmrg/out=mrg.txt/tolerance=5e1"
+            for file in file_strings:
+                script_string += f" {file}"
+            script_string += "\n"
+            if len(file_strings) == 0:
+                print("No detections found!")
+            else:
+                with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/src_merge.xco", 'w') as script:
+                    script.write(script_string)
+                    script.write("exit\n")
+                subprocess.run(["ximage", "@src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
+                subprocess.run(["rm", "src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
+        
+        """print("Extracting and merging data for PI channel ranges.")
+        for bound in tqdm(self._phi_bounds):
+            detect_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
+            generate_directory(detect_path, overwrite=False)
+            with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
+                script.write('extraction\n')
+                script.write(f"read events\n")
+                script.write(".\n")
+                script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
+                script.write('yes\n')
+                script.write("filter PHA_CUTOFF\n")
+                script.write(f"{bound[0]}\n")
+                script.write(f"{bound[1]}\n")
+                script.write("filter time scc\n")
+                script.write(f"{self._time_bins[0][0][0]} , {self._time_bins[0][0][1]}\n")
+                script.write("x\n")
+                script.write("extract events\n")
+                script.write("\n")
+                script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu_{self._time_bins[0][0][0]}-{self._time_bins[0][0][1]}.evt\n")
+                script.write('no\n')
+                #script.write("clear data\n")
+                script.write("clear events\n")
+
+            for interval in list(self._time_bins[0].keys())[1:len(self._time_bins[0].keys()) - 1]:
+                if len(self._time_bins[0][interval][2]) == 0:
+                    continue
+                
+                with open(self._refpath + "/event_cl/xselect.xco", 'a') as script:
+                    #script.write('\n')
+                    #script.write('\n')
+                    #script.write(f"read events\n")
+                    #script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
+                    script.write("filter time scc\n")
+                    script.write(f"{self._time_bins[0][interval][0]} , {self._time_bins[0][interval][1]}\n")
+                    script.write("x\n")
+                    script.write("extract events\n")
+                    script.write("\n")
+                    script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                    script.write('no\n')
+                    #script.write("clear data\n")
+                    script.write("clear events\n")
+            
+            interval = list(self._time_bins[0].keys())[-1]
+            with open(self._refpath + "/event_cl/xselect.xco", 'a') as script:
+                    script.write('\n')
+                    script.write('\n')
+                    #script.write(f"read events\n")
+                    #script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
+                    script.write("filter time scc\n")
+                    script.write(f"{self._time_bins[0][interval][0]} , {self._time_bins[0][interval][1]}\n")
+                    script.write("x\n")
+                    script.write("extract events\n")
+                    script.write("\n")
+                    script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                    script.write('no\n')
+                    #script.write("exit no\n")
+                    #script.write("clear data\n")
+                    script.write("clear events\n")
+
+            with open(self._refpath + "/event_cl/xselect.xco", 'a') as script:
+                script.write('\n')
+                script.write('\n')
+                #script.write(f"read events\n")
+                #script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
+                #script.write("./\n")
+                #script.write('yes\n')
+                #script.write("filter PHA_CUTOFF\n")
+                #script.write(f"{bound[0]}\n")
+                #script.write(f"{bound[1]}\n")
+                script.write("filter time scc\n")
+                script.write(f"{self._time_bins[1][0][0]} , {self._time_bins[1][0][1]}\n")
+                script.write("x\n")
+                script.write("extract events\n")
+                script.write("\n")
+                script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu_{self._time_bins[1][0][0]}-{self._time_bins[1][0][1]}.evt\n")
+                script.write('no\n')
+                #script.write("clear data\n")
+                script.write("clear events\n")
+
+            for interval in list(self._time_bins[1].keys())[1:len(self._time_bins[1].keys()) - 1]:
+                if len(self._time_bins[1][interval][2]) == 0:
+                    continue
+                
+                with open(self._refpath + "/event_cl/xselect.xco", 'a') as script:
+                    script.write('\n')
+                    script.write('\n')
+                    #script.write(f"read events\n")
+                    #script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
+                    script.write("filter time scc\n")
+                    script.write(f"{self._time_bins[1][interval][0]} , {self._time_bins[1][interval][1]}\n")
+                    script.write("x\n")
+                    script.write("extract events\n")
+                    script.write("\n")
+                    script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                    script.write('no\n')
+                    #script.write("clear data\n")
+                    script.write("clear events\n")
+            
+            interval = list(self._time_bins[1].keys())[-1]
+            with open(self._refpath + "/event_cl/xselect.xco", 'a') as script:
+                    script.write('\n')
+                    script.write('\n')
+                    #script.write(f"read events\n")
+                    #script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
+                    script.write("filter time scc\n")
+                    script.write(f"{self._time_bins[1][interval][0]} , {self._time_bins[1][interval][1]}\n")
+                    script.write("x\n")
+                    script.write("extract events\n")
+                    script.write("\n")
+                    script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                    script.write('no\n')
+                    script.write("exit no\n")
+            
+            #subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir)#, capture_output=True)
+            #subprocess.run(["rm", "xselect.xco"], cwd=self._evdir)#, capture_output=True)
+        
+        # Now we merge the FPMA and FPMB data together into one file structure.
+        # PASS 1
+        print("Performing sliding cell source detection on stacked images.")
+        for bound in tqdm(self._phi_bounds):
+
+            running_directory = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
+            with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
+                script.write(f"read/fits/size=800/nu_{self._time_bins[0][0][0]}-{self._time_bins[0][0][1]}.evt\n")
+                script.write("sum_image\n")
+                script.write(f"detect/snr={self._snr}/filedet={self._time_bins[0][0][0]}-{self._time_bins[0][0][1]}.det/fitsdet={self.time_bins[0][0][0]}-{self.time_bins[0][0][1]}.fits\n")
+                script.write("\n")
+                script.write("free_saved\n")
+                script.write("\n")
+
+            for interval in list(self._time_bins[0].keys())[:len(self._time_bins[0].keys()) - 1]:
+                if len(self._time_bins[0][interval][2]) == 0:
+                        continue
+                with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'a') as script:
+                    script.write(f"read/fits/size=800/nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                    script.write("save_image\n")
+                    script.write(f"detect/snr={self._snr}/filedet={self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.det/fitsdet={self.time_bins[0][interval][0]}-{self.time_bins[0][interval][1]}.fits\n")
+                    script.write("\n")
+                    script.write("free_saved\n")
+                    script.write("\n")
+            
+            interval = list(self._time_bins[0].keys())[-1]
+            with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'a') as script:
+                script.write(f"read/fits/size=800/nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                script.write("save_image\n")
+                script.write(f"detect/snr={self._snr}/filedet={self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.det/fitsdet={self.time_bins[0][interval][0]}-{self.time_bins[0][interval][1]}.fits\n")
+                script.write("exit\n")
+
+            with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'a') as script:
+                script.write(f"read/fits/size=800/nu_{self._time_bins[1][0][0]}-{self._time_bins[1][0][1]}.evt\n")
+                script.write("save_image\n")
+                script.write(f"detect/snr={self._snr}/filedet={self._time_bins[1][0][0]}-{self._time_bins[1][0][1]}.det/fitsdet={self.time_bins[1][0][0]}-{self.time_bins[1][0][1]}.fits\n")
+                script.write("\n")
+                script.write("free_saved\n")
+                script.write("\n")
+
+            for interval in list(self._time_bins[1].keys())[:len(self._time_bins[1].keys()) - 1]:
+                if len(self._time_bins[1][interval][2]) == 0:
+                        continue
+                with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'a') as script:
+                    script.write(f"read/fits/size=800/nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                    script.write("save_image\n")
+                    script.write(f"detect/snr={self._snr}/filedet={self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.det/fitsdet={self.time_bins[1][interval][0]}-{self.time_bins[1][interval][1]}.fits\n")
+                    script.write("\n")
+                    script.write("free_saved\n")
+                    script.write("\n")
+            
+            interval = list(self._time_bins[1].keys())[-1]
+            with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'a') as script:
+                script.write(f"read/fits/size=800/nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                script.write("save_image\n")
+                script.write(f"detect/snr={self._snr}/filedet={self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.det/fitsdet={self.time_bins[1][interval][0]}-{self.time_bins[1][interval][1]}.fits\n")
+                script.write("exit\n")
+            subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory)#, capture_output=True)
+            subprocess.run(["rm", "ximage.xco"], cwd=running_directory)#, capture_output=True)
+        
+        print("Merging together results to find unique detections.")
+        for bound in self.phi_bounds:
+            det_files = glob.glob(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/*.det")
+            file_strings = []
+            for file in det_files:
+                file_strings.append(file.replace(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/", ''))
+            script_string = "srcmrg/out=mrg.txt/tolerance=5e1"
+            for file in file_strings:
+                script_string += f" {file}"
+            script_string += "\n"
+            if len(file_strings) == 0:
+                print("No detections found!")
+            else:
+                with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/src_merge.xco", 'w') as script:
+                    script.write(script_string)
+                    script.write("exit\n")
+                subprocess.run(["ximage", "@src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
+                subprocess.run(["rm", "src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")"""
+
+
+    def process_detections(self):
+        for bound in self.phi_bounds:
+            detections = self.detection_dir_processing(bound)
+            if detections == None:
+                n_det = 0
+            if detections != None:
+                n_det = len(detections["INDEX"])
+                self.nuproducts(detections, bound)
+            print(f"PI Channels: {bound[0]}-{bound[1]} -- {n_det} detections found.")
 
 
     def read_unique_detections(self, bounds):
@@ -648,6 +1028,8 @@ class NuAnalysis(Observation):
     def read_detection_dir(self, bounds):
         det_files = glob.glob(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/*.det")
         detect_info = {}
+        print(f"READING ALL DETECTIONS: {bounds}")
+        print(len(det_files))
         for file in det_files:
             with open(file) as detections:
                 for i in range(14):
@@ -704,33 +1086,48 @@ class NuAnalysis(Observation):
             ra = detect_info["RA"][int(i) - 1]
             dec = detect_info["DEC"][int(i) - 1]
             c = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg))
-            if self._source_position.separation(c).arcsec > 50:
+            if self._source_position.separation(c).arcsec > self.rlimit:
                 for key in detect_info:
                     trimmed_detect_info[key].append(detect_info[key][int(i) - 1])
         return trimmed_detect_info
     
     
     def detection_dir_processing(self, bounds):
+        
+        # Read in unique detection information
         unique_detect_info = self.read_unique_detections(bounds)
         if unique_detect_info == None:
             return None
+        #print(f"Unique detections found for PI {bounds[0]}-{bounds[1]}: {len(unique_detect_info['INDEX'])}")
+
+        # Read in all detections for a given PI channel range
         all_detect_info = self.read_detection_dir(bounds)
-        
+        n_all_det = 0
+        for time in all_detect_info:
+            n_all_det += len(all_detect_info[time]["INDEX"])
+        #print(f"All detections found for PI {bounds[0]}-{bounds[1]}: {len(unique_detect_info['INDEX'])}")
+
         # Begin by eliminating the main source
         trimmed_detect_info = self.remove_main_source(unique_detect_info)
+        #print(f"Unique non main source detections found for PI {bounds[0]}-{bounds[1]}: {len(trimmed_detect_info['INDEX'])}")
         
         # Now remove duplicates and save time slots
         trimmed_all_info = {}
         for key in trimmed_detect_info:
             trimmed_all_info[key] = []
         trimmed_all_info["TIMES"] = []
-        
+
         for time in all_detect_info:
             for idx in all_detect_info[time]["INDEX"]:
+
                 if all_detect_info[time]["XPIX"][int(idx) - 1] in trimmed_detect_info["XPIX"]:
                     for key in trimmed_detect_info:
                         trimmed_all_info[key].append(all_detect_info[time][key][int(idx) - 1])
                     trimmed_all_info["TIMES"].append(time)
+        
+        #for time in all_detect_info:
+        #    print(len(all_detect_info[time]["INDEX"]))
+
         
         self._detections = trimmed_all_info
         return trimmed_all_info

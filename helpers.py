@@ -1,6 +1,7 @@
 import glob
 import os
 import subprocess
+from utils import energy_to_chan
 
 
 def generate_directory(path, overwrite=False):
@@ -152,3 +153,33 @@ def remove_tmp_folders(path):
     tmp_dirs = glob.glob(path + "*tmp_nuproducts")
     for dir in tmp_dirs:
         subprocess.run(["rm", "-rf", dir])
+
+
+def make_xselect_commands(infile, outfile, dir, elow, ehigh, usrgti=False):
+    '''
+    Helper script to generate the xselect commands to make an image in a given NuSTAR range
+    '''
+    
+    xsel=open("xsel.xco","w")
+    xsel.write("session1\n")
+    xsel.write("read events \n")
+    xsel.write(f'{dir}\n')
+    xsel.write(f'{infile}\n ')
+    xsel.write('yes \n')
+    pi_low = energy_to_chan(elow)
+    pi_high = energy_to_chan(ehigh)
+    if usrgti is not False:
+        xsel.write(f'filter time \n')
+        xsel.write('file \n')
+        xsel.write(f'{usrgti}\n')
+        xsel.write('extract events\n')
+    xsel.write('filter pha_cutoff {} {} \n'.format(pi_low, pi_high))
+
+    xsel.write('set xybinsize 1\n')
+    xsel.write("extract image\n")
+    xsel.write("save image\n")
+    xsel.write("%s \n" % outfile)
+    xsel.write('exit\n')           
+    xsel.write('n \n')
+    xsel.close()
+    return 'xsel.xco'
