@@ -17,9 +17,9 @@ seqid = "60965003002"
 path = f"../data/{seqid}/"
 evdir = f"{path}event_cl/"
 out_path = f"{path}products/"
-test = NuAnalysis(20000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True)
+test = NuAnalysis(10, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True)
 test.test2_gen()
-test.process_detections()
+#test.process_detections()
 
 '''for bound in test._phi_bounds[2:3]:
     data = test.read_unique_detections(bound)
