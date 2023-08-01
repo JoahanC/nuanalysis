@@ -715,7 +715,6 @@ class NuAnalysis(Observation):
             running_directory = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
             stacked_images = glob.glob(running_directory + "*.evt")
             stacked_files = [file.replace(running_directory, '') for file in stacked_images]
-            #print(stacked_files)
             for file in tqdm(stacked_files):
                 if len(fits.getdata(running_directory + file)) != 0:
                     with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
@@ -815,7 +814,7 @@ class NuAnalysis(Observation):
         """
 
         
-	if "mrg.txt" not in os.listdir(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/"):
+        if "mrg.txt" not in os.listdir(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/"):
             return None           
 
         with open(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/mrg.txt") as detections:
