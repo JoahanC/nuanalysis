@@ -656,10 +656,11 @@ class NuAnalysis(Observation):
         
         # Begin by selecting the data which lies in the appropriate energy range.
         
-        #for bound in self._phi_bounds:
-            #detect_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
-            #generate_directory(detect_path, overwrite=False)
-            """for interval in tqdm(self._time_bins[0]):
+        for bound in self._phi_bounds:
+            detect_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
+            generate_directory(detect_path, overwrite=False)
+            print("Beginning Cycle 1")
+            for interval in tqdm(self._time_bins[0]):
                 if len(self._time_bins[0][interval][2]) == 0:
                     continue
                 else:
@@ -681,9 +682,9 @@ class NuAnalysis(Observation):
                         script.write('no\n')
                         script.write("exit no\n")
                     subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
-                    subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)"""
-
-            """for interval in tqdm(self._time_bins[1]):
+                    subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
+            print("Beginning Cycle 2")
+            for interval in tqdm(self._time_bins[1]):
                 if len(self._time_bins[1][interval][2]) == 0:
                     continue
                 else:
@@ -705,13 +706,13 @@ class NuAnalysis(Observation):
                         script.write('no\n')
                         script.write("exit no\n")
                     subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
-                    subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)"""
+                    subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
         
         
 
         print("Performing sliding cell source detection on stacked images.")
         for bound in self._phi_bounds:
-
+            print("Beginning Cycle 1")
             running_directory = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
             stacked_images = glob.glob(running_directory + "*.evt")
             stacked_files = [file.replace(running_directory, '') for file in stacked_images]
@@ -725,7 +726,8 @@ class NuAnalysis(Observation):
                     subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
                 else:
                     print("Skipped")   
-            """for interval in tqdm(self._time_bins[0]):
+            print("Beginning Cycle 2")
+            for interval in tqdm(self._time_bins[0]):
                 print(len(self._time_bins[0][interval][2]))
                 if len(self._time_bins[0][interval][2]) <= 2:
                     continue
@@ -745,7 +747,7 @@ class NuAnalysis(Observation):
                         script.write(f"detect/snr={self._snr}/filedet={self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.det/fitsdet={self.time_bins[1][interval][0]}-{self.time_bins[1][interval][1]}.fits\n")
                         script.write("exit")
                     subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
-                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)"""
+                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
             
             
         print("Merging together results to find unique detections.")
