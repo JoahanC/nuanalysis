@@ -12,14 +12,16 @@ import radial_profile
 from helpers import *
 from nuanalysis import NuAnalysis
 
-seqid = "60965003002"
+seqids = ["60965003002", 30902035002, 70901004002]
 #seqid = "70901004002"
-path = f"../data/{seqid}/"
-evdir = f"{path}event_cl/"
-out_path = f"{path}products/"
-test = NuAnalysis(10, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True)
-test.test2_gen()
-#test.process_detections()
+for seqid in seqids:
+    print(f"SEQID:{seqid}") 
+    path = f"../data/{seqid}/"
+    evdir = f"{path}event_cl/"
+    out_path = f"{path}products/"
+    test = NuAnalysis(10, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True)
+    test.test2_gen()
+    test.process_detections()
 
 '''for bound in test._phi_bounds[2:3]:
     data = test.read_unique_detections(bound)

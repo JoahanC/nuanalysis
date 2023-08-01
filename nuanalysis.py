@@ -814,7 +814,8 @@ class NuAnalysis(Observation):
         None
         """
 
-        if "mrg.txt" not in os.listdir(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/"):
+        
+	if "mrg.txt" not in os.listdir(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/"):
             return None           
 
         with open(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/mrg.txt") as detections:
