@@ -358,8 +358,7 @@ class NuAnalysis(Observation):
                         script.write("exit")
                     subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
                     subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
-                else:
-                    print("Skipped")   
+                
             
         print("Merging together results to find unique detections.")
         for bound in self.phi_bounds:
@@ -380,7 +379,16 @@ class NuAnalysis(Observation):
                 subprocess.run(["ximage", "@src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
                 subprocess.run(["rm", "src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
         
-        
+
+    def detection_summary(self):
+        for bound in self.phi_bounds:
+            detections = self.detection_dir_processing(bound)
+            if detections == None:
+                n_det = 0
+            if detections != None:
+                n_det = len(detections["INDEX"]) 
+            print(f"PI Channels: {bound[0]}-{bound[1]} -- {n_det} detections found.")
+
 
 
     def process_detections(self):
