@@ -267,11 +267,13 @@ class NuAnalysis(Observation):
             if datapoint > intervals_p2[idx] and datapoint <= intervals_p2[idx + 1]:
                 data_intervals_2[idx][2].append(datapoint)
             else:
-                idx += 1
-                data = []
-                data_intervals_2[idx] = [intervals_p2[idx], intervals_p2[idx + 1], data]
-                data_intervals_2[idx][2].append(datapoint)
-
+                if datapoint > intervals_p2[idx + 1] and datapoint < intervals_p2[idx + 2]:
+                    idx += 1
+                    data = []
+                    data_intervals_2[idx] = [intervals_p2[idx], intervals_p2[idx + 1], data]
+                    data_intervals_2[idx][2].append(datapoint)
+                else:
+                    idx += 1
         return [data_intervals_1, data_intervals_2]
 
 
@@ -303,9 +305,6 @@ class NuAnalysis(Observation):
                     generate_directory(detect_path, overwrite=False)
                     print(f"Processing first set of time bins: {n_timebins} detected.")
                     for interval in tqdm(self._time_bins[0]):
-                        if len(self._time_bins[0][interval][2]) == 0:
-                            continue
-                        
                         with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
                             script.write('\n')
                             script.write('\n')
@@ -330,9 +329,6 @@ class NuAnalysis(Observation):
                     n_timebins = len(list(self._time_bins[1].keys()))
                     print(f"Processing second set of time bins: {n_timebins} detected.")
                     for interval in tqdm(self._time_bins[1]):
-                        if len(self._time_bins[1][interval][2]) == 0:
-                            continue
-                        
                         with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
                             script.write('\n')
                             script.write('\n')
@@ -361,8 +357,7 @@ class NuAnalysis(Observation):
                 for interval in tqdm(self._time_bins[0]):
                     
                     running_directory = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
-                    if len(self._time_bins[0][interval][2]) == 0:
-                        continue
+                    
                     
                     with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
                         script.write(f"read/fits/size=800/nuA_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
@@ -726,29 +721,6 @@ class NuAnalysis(Observation):
                     subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
                 else:
                     print("Skipped")   
-            print("Beginning Cycle 2")
-            for interval in tqdm(self._time_bins[0]):
-                print(len(self._time_bins[0][interval][2]))
-                if len(self._time_bins[0][interval][2]) <= 2:
-                    continue
-                else:
-                    with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
-                        script.write(f"read/fits/size=800/nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
-                        script.write(f"detect/snr={self._snr}/filedet={self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.det/fitsdet={self.time_bins[0][interval][0]}-{self.time_bins[0][interval][1]}.fits\n")
-                        script.write("exit")
-                    subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
-                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
-            for interval in tqdm(self._time_bins[1]):
-                if len(self._time_bins[1][interval][2]) <= 10:
-                    continue
-                else:
-                    with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
-                        script.write(f"read/fits/size=800/nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
-                        script.write(f"detect/snr={self._snr}/filedet={self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.det/fitsdet={self.time_bins[1][interval][0]}-{self.time_bins[1][interval][1]}.fits\n")
-                        script.write("exit")
-                    subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
-                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
-            
             
         print("Merging together results to find unique detections.")
         for bound in self.phi_bounds:
