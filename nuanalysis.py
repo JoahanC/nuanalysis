@@ -276,26 +276,18 @@ class NuAnalysis(Observation):
                     idx += 1
         return [data_intervals_1, data_intervals_2]
 
-    
-    def test2_gen(self):
-        """
-        This method generates a series of detection searches after first stacking and restricting the PI channels 
-        of the clean event files using `xselect`, afterwhich it runs a sliding cell detection algorithm using `ximage` 
-        The detections are calculated for each time bin defined in the `generate_timebins` method and are then aggregated.
-        The directories underwhich the detection information is stored has the following syntax:
 
-        dir = "./seqid/detections/phi_low-phi_high-dtime-snr/"
+    def event_extraction(self):
         """
-
+        The event extraction and temporal binning process for finding XRTs.
+        """
         if "detections" not in self._contents:
             os.mkdir(self._refpath + "detections/")
-        
-        # Begin by selecting the data which lies in the appropriate energy range.
-        
+
         for bound in self._phi_bounds:
             detect_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
             generate_directory(detect_path, overwrite=False)
-            print("Beginning Cycle 1")
+            print(f"Binning data: PHI Bound {bound[0]}-{bound[1]}; Cycle 1")
             for interval in tqdm(self._time_bins[0]):
                 if len(self._time_bins[0][interval][2]) == 0:
                     continue
@@ -319,7 +311,124 @@ class NuAnalysis(Observation):
                         script.write("exit no\n")
                     subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
                     subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
-            print("Beginning Cycle 2")
+            print(f"Binning data: PHI Bound {bound[0]}-{bound[1]}; Cycle 2")
+            for interval in tqdm(self._time_bins[1]):
+                if len(self._time_bins[1][interval][2]) == 0:
+                    continue
+                else:
+                    with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
+                        script.write('extraction\n')
+                        script.write(f"read events\n")
+                        script.write(".\n")
+                        script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
+                        script.write('yes\n')
+                        script.write("filter PHA_CUTOFF\n")
+                        script.write(f"{bound[0]}\n")
+                        script.write(f"{bound[1]}\n")
+                        script.write("filter time scc\n")
+                        script.write(f"{self._time_bins[1][interval][0]} , {self._time_bins[1][interval][1]}\n")
+                        script.write("x\n")
+                        script.write("extract events\n")
+                        script.write("\n")
+                        script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                        script.write('no\n')
+                        script.write("exit no\n")
+                    subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
+                    subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
+
+
+    def sliding_cell_detection(self):
+        """
+        The sliding cell detection call on the temporal binned data.
+        """
+
+        print("Performing sliding cell source detection on stacked images.")
+        for bound in self._phi_bounds:
+            print(f"Processing PHI Channels: {bound[0]}-{bound[1]}")
+            running_directory = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
+            stacked_images = glob.glob(running_directory + "*.evt")
+            stacked_files = [file.replace(running_directory, '') for file in stacked_images]
+            for file in tqdm(stacked_files):
+                if len(fits.getdata(running_directory + file)) != 0:
+                    with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
+                        script.write(f"read/fits/size=800/{file}\n")
+                        script.write(f"detect/snr={self._snr}/filedet={file.replace('.evt', '')}.det/fitsdet={file.replace('.evt', '')}.fits\n")
+                        script.write("exit")
+                    subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
+                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
+
+    
+    def detection_merging(self):
+        """
+        Performs the first round of detection redundancy culling on detections caught by the sliding cell algorithm
+        """
+        print("Merging together results to find unique detections.")
+        for bound in self.phi_bounds:
+            det_files = glob.glob(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/*.det")
+            file_strings = []
+            for file in det_files:
+                file_strings.append(file.replace(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/", ''))
+            script_string = "srcmrg/out=mrg.txt/tolerance=5e1"
+            for file in file_strings:
+                script_string += f" {file}"
+            script_string += "\n"
+            if len(file_strings) == 0:
+                print("No detections found!")
+            else:
+                with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/src_merge.xco", 'w') as script:
+                    script.write(script_string)
+                    script.write("exit\n")
+                subprocess.run(["ximage", "@src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
+                subprocess.run(["rm", "src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
+
+
+    def run_detection_pipeline(self):
+        pass
+
+
+    def test2_gen(self):
+        """
+        This method generates a series of detection searches after first stacking and restricting the PI channels 
+        of the clean event files using `xselect`, afterwhich it runs a sliding cell detection algorithm using `ximage` 
+        The detections are calculated for each time bin defined in the `generate_timebins` method and are then aggregated.
+        The directories underwhich the detection information is stored has the following syntax:
+
+        dir = "./seqid/detections/phi_low-phi_high-dtime-snr/"
+        """
+
+        if "detections" not in self._contents:
+            os.mkdir(self._refpath + "detections/")
+        
+        # Begin by selecting the data which lies in the appropriate energy range.
+        
+        for bound in self._phi_bounds:
+            detect_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
+            generate_directory(detect_path, overwrite=False)
+            print(f"Binning data: PHI Bound {bound[0]}-{bound[1]}; Cycle 1")
+            for interval in tqdm(self._time_bins[0]):
+                if len(self._time_bins[0][interval][2]) == 0:
+                    continue
+                else:
+                    with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
+                        script.write('extraction\n')
+                        script.write(f"read events\n")
+                        script.write(".\n")
+                        script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
+                        script.write('yes\n')
+                        script.write("filter PHA_CUTOFF\n")
+                        script.write(f"{bound[0]}\n")
+                        script.write(f"{bound[1]}\n")
+                        script.write("filter time scc\n")
+                        script.write(f"{self._time_bins[0][interval][0]} , {self._time_bins[0][interval][1]}\n")
+                        script.write("x\n")
+                        script.write("extract events\n")
+                        script.write("\n")
+                        script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                        script.write('no\n')
+                        script.write("exit no\n")
+                    subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
+                    subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
+            print(f"Binning data: PHI Bound {bound[0]}-{bound[1]}; Cycle 2")
             for interval in tqdm(self._time_bins[1]):
                 if len(self._time_bins[1][interval][2]) == 0:
                     continue
@@ -346,7 +455,7 @@ class NuAnalysis(Observation):
         
         print("Performing sliding cell source detection on stacked images.")
         for bound in self._phi_bounds:
-            print("Beginning Cycle 1")
+            print(f"Processing PHI Channels: {bound[0]}-{bound[1]}")
             running_directory = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
             stacked_images = glob.glob(running_directory + "*.evt")
             stacked_files = [file.replace(running_directory, '') for file in stacked_images]
