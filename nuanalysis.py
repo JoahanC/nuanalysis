@@ -7,15 +7,11 @@ from nustar import *
 from helpers import *
 from astropy.io import fits
 from astropy import units as u
-from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 from tqdm import tqdm
 import radial_profile
-from astropy import units as u
 from astropy.coordinates import SkyCoord
-from regions import PixCoord
-from regions import CircleSkyRegion, CirclePixelRegion
-import astropy.visualization
+from regions import CircleSkyRegion
 
 
 class NuAnalysis(Observation):
@@ -23,7 +19,7 @@ class NuAnalysis(Observation):
     This class defines an object to be used for performing analysis on a NuSTAR observation.
     """
 
-    def __init__(self, dtime, snr_threshold, path=False, seqid=False, evdir=False, out_path=False, clean=False):
+    def __init__(self, dtime, snr_threshold, path=False, seqid=False, evdir=False, out_path=False, clean=False, bifrost=False):
         self._snr = snr_threshold
         self._dtime = dtime
         self._clean = clean
@@ -35,8 +31,8 @@ class NuAnalysis(Observation):
         
         #generate_directory(out_path, overwrite=True)
         if "event_cl" not in self._contents or not clean:
-            generate_directory(evdir, overwrite=True)
-            subprocess.run(["nupipeline", path, f"nu{seqid}", evdir])
+            #generate_directory(evdir, overwrite=True)
+            subprocess.run(["nupipeline", path, f"nu{seqid}", evdir, "saamode=STRICT", "tentacle=yes", "clobber=yes"])
             self._clean = True
         
         super().__init__(path, seqid, evdir, out_path)
@@ -49,7 +45,7 @@ class NuAnalysis(Observation):
             print(f"FILES: {self.science_files['A'][0]}, {self.science_files['B'][0]}")
             infiles = f"{self.science_files['A'][0].replace(self._refpath, '')} , {self.science_files['B'][0].replace(self._refpath, '')}"
             outfile = self._refpath + "science.fits"
-            make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79)
+            make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79, evt_extract=True)
             subprocess.run(["xselect", "@xsel.xco"])
 
         hdu = fits.open(self._refpath + "science.fits", uint=True)[0]
@@ -64,6 +60,9 @@ class NuAnalysis(Observation):
         print(self.rlimit)
         self._time_bins = self.generate_timebins()
         self._detections = None
+        sky = self.wcs.pixel_to_world(30, 40)
+        sky2 = self.wcs.pixel_to_world(35, 40)
+        print(sky.separation(sky2).arcsecond)
 
     # Mutable properties begin below
 
@@ -119,6 +118,34 @@ class NuAnalysis(Observation):
 
         ax.get_coords_overlay()
 
+        plt.colorbar(im)
+        plt.grid(True)
+        plt.xlabel('')
+        plt.ylabel('')
+        plt.show()
+
+    
+    def display_detections(self):
+        ax = plt.subplot(projection=self.wcs)
+        im = ax.imshow(self.data, origin='lower')
+        center_sky = SkyCoord(self.coords[0], self.coords[1], unit='deg', frame='fk5')
+        region_sky = CircleSkyRegion(center=center_sky, radius=50*u.arcsecond)
+        pixel_region = region_sky.to_pixel(self.wcs)
+        pixel_region.plot(ax=ax, color="yellow")
+
+        for bound in self.phi_bounds:
+            detections = self.detection_dir_processing(bound)
+            if detections == None:
+                continue
+            if detections != None:
+                for idx in range(len(detections["RA"])):
+                    ra, dec = self.ra_dec_todeg(detections["RA"][idx], detections["DEC"][idx])
+                    detect_coord = SkyCoord(ra, dec, unit='deg', frame='fk5')
+                    detect_circle = CircleSkyRegion(center=detect_coord, radius=5*u.arcsecond)
+                    detect_region = detect_circle.to_pixel(self.wcs)
+                    detect_region.plot(ax=ax, color="white")                
+        
+        ax.get_coords_overlay(self.wcs)
         plt.colorbar(im)
         plt.grid(True)
         plt.xlabel('')
@@ -352,7 +379,7 @@ class NuAnalysis(Observation):
                 if len(fits.getdata(running_directory + file)) != 0:
                     with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
                         script.write(f"read/fits/size=800/{file}\n")
-                        script.write(f"detect/snr={self._snr}/filedet={file.replace('.evt', '')}.det/fitsdet={file.replace('.evt', '')}.fits\n")
+                        script.write(f"detect/snr={self._snr}/source_box_size=32/filedet={file.replace('.evt', '')}.det/fitsdet={file.replace('.evt', '')}.fits\n")
                         script.write("exit")
                     subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
                     subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
@@ -383,7 +410,9 @@ class NuAnalysis(Observation):
 
 
     def run_detection_pipeline(self):
-        pass
+        self.event_extraction()
+        self.sliding_cell_detection()
+        self.detection_merging()
 
 
     def test2_gen(self):
@@ -687,7 +716,7 @@ class NuAnalysis(Observation):
 
 
     def nuproducts(self, detect_info, pi_bounds):
-        
+        print('here')
         if detect_info == None:
             print("Oh no! No detections!")
             return None
@@ -699,11 +728,13 @@ class NuAnalysis(Observation):
         for times in set(detect_info["TIMES"]):
             if self._refpath + f"products/{times[0]}_{times[1]}_gti.hnd_gti" not in gti_files:
                 generate_gti_files(self._refoutpath, times[0], times[1])
-        
+            
+
         for idx in range(len(detect_info["INDEX"])):
             coords = self.ra_dec_todeg(detect_info["RA"][int(idx)], detect_info["DEC"][int(idx)])
-            string = f"nuproducts indir=./event_cl instrument=FPMA steminputs=nu{self._seqid} outdir=./products/{pi_bounds[0]}_{pi_bounds[1]}-{self._dtime}_{self._snr}/{idx} srcra={coords[0]} srcdec={coords[1]} bkgra={coords[0]} bkgdec={coords[1]} binsize=5 usrgtifile=./products/{detect_info['TIMES'][idx][0]}_{detect_info['TIMES'][idx][1]}_gti.hnd_gti"
-            string = f"nuproducts indir=./event_cl instrument=FPMB steminputs=nu{self._seqid} outdir=./products/{pi_bounds[0]}_{pi_bounds[1]}-{self._dtime}_{self._snr}/{idx} srcra={coords[0]} srcdec={coords[1]} bkgra={coords[0]} bkgdec={coords[1]} binsize=5 usrgtifile=./products/{detect_info['TIMES'][idx][0]}_{detect_info['TIMES'][idx][1]}_gti.hnd_gti"
+            string = f"nuproducts indir=./event_cl instrument=FPMA steminputs=nu{self._seqid} outdir=./products/{pi_bounds[0]}_{pi_bounds[1]}-{self._dtime}_{self._snr}/{idx}A srcra={coords[0]} srcdec={coords[1]} bkgra={coords[0]} bkgdec={coords[1]} binsize=1 usrgtifile=./products/{detect_info['TIMES'][idx][0]}_{detect_info['TIMES'][idx][1]}_gti.hnd_gti infile=science.evt"
+            subprocess.run(string.split(), cwd=self._refpath)
+            string = f"nuproducts indir=./event_cl instrument=FPMB steminputs=nu{self._seqid} outdir=./products/{pi_bounds[0]}_{pi_bounds[1]}-{self._dtime}_{self._snr}/{idx}B srcra={coords[0]} srcdec={coords[1]} bkgra={coords[0]} bkgdec={coords[1]} binsize=1 usrgtifile=./products/{detect_info['TIMES'][idx][0]}_{detect_info['TIMES'][idx][1]}_gti.hnd_gti infile=science.evt"
             subprocess.run(string.split(), cwd=self._refpath)
 
 
@@ -744,7 +775,16 @@ class NuAnalysis(Observation):
         return ds9_string
     
 
-    def acquire_lightcurve(self, pilow, pihi, n):
+    def list_product_files(self):
+        all_files = []
+        for bound in self._phi_bounds:
+            files = glob.glob(self._refpath + f"products/{bound[0]}_{bound[1]}-{self._dtime}_{self._snr}/**/*.flc", recursive=True)
+            for file in files:
+                all_files.append(file)
+        return all_files
+
+
+    def acquire_lightcurve(self, fits_file):
         """
         Returns a dictionary containing the background-subtracted lightcurve data.
 
@@ -760,7 +800,6 @@ class NuAnalysis(Observation):
         ------
         """
 
-        fits_file = self._refpath + f"products/{pilow}_{pihi}/{n}/nu{self._seqid}B01.flc"
         lc_data = {}
         lc_data["TIME"] = []
         lc_data["RATE"] = []
@@ -783,9 +822,9 @@ class NuAnalysis(Observation):
         return pha_data
 
 
-    def plot_lightcurve(self, pilow, pihi, n):
+    def plot_lightcurves(self):
         """
-        Plots the background subtracted lightcurve of a detection.
+        Plots the background subtracted lightcurve of all detections.
 
         Arguments
         ---------
@@ -799,16 +838,20 @@ class NuAnalysis(Observation):
         ------
         """
 
-        lc_data = self.acquire_lightcurve(pilow, pihi, n)
-        fig, ax = plt.subplots()
-        ax.errorbar(lc_data["TIME"], lc_data["RATE"], lc_data["RATEERR"], fmt='o', lw=0.5, markersize=2)
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Counts/Time (c/s)")
-        kev_low = chan_to_energy(pilow)
-        kev_high = chan_to_energy(pihi)
-        ax.set_title("Background Subtracted Lightcurve", loc="left")
-        ax.set_title(f"Energy Range: {kev_low} - {kev_high}", loc="right")
-        plt.show()
+        for file in self.list_product_files():
+            lc_data = self.acquire_lightcurve(file)
+            fig, ax = plt.subplots()
+            ax.errorbar(lc_data["TIME"], lc_data["RATE"], lc_data["RATEERR"], fmt='o', lw=0.5, markersize=2)
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel("Counts/Time (c/s)")
+            #pilow = file.replace()
+            #pihi = file.replace()
+            #kev_low = chan_to_energy(pilow)
+            #kev_high = chan_to_energy(pihi)
+            ax.set_title("Background Subtracted Lightcurve", loc="left")
+            #ax.set_title(f"Energy Range: {kev_low} - {kev_high}", loc="right")
+            plt.savefig(file.replace(".flc", ".pdf"), dpi=800)
+            plt.close()
 
 
     def plot_pha(self, pilow, pihi, n):
