@@ -48,7 +48,7 @@ class NuAnalysis(Observation):
                 generate_directory(evdir + "event_cl/", overwrite=True)
                 datapath = f"../../../nustar/fltops/{self._object}/{seqid}"
                 subprocess.run(["nupipeline", datapath, f"nu{seqid}", evdir, "saamode=STRICT", "tentacle=yes", "clobber=yes"])
-                with open(evdir + "event_cl/processing_flag.txt") as file:
+                with open(evdir + "processing_flag.txt") as file:
                     file.write("PROCESSING COMPLETE")
                 self._contents = os.listdir(path)
             else:
