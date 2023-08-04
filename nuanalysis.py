@@ -51,6 +51,7 @@ class NuAnalysis(Observation):
                 with open(evdir + "processing_flag.txt", "w") as file:
                     file.write("PROCESSING COMPLETE")
                 self._contents = os.listdir(path)
+                self._clean = True
             else:
                 #generate_directory(evdir, overwrite=True)
                 subprocess.run(["nupipeline", path, f"nu{seqid}", evdir, "saamode=STRICT", "tentacle=yes", "clobber=yes"])
