@@ -46,9 +46,9 @@ class NuAnalysis(Observation):
                     raise AssertionError("OBJECT NAME NOT PROVIDED")
                 generate_directory(evdir, overwrite=True)
                 generate_directory(evdir + "event_cl/", overwrite=True)
-                datapath = f"../../../nustar/fltops/{self._object}/{seqid}"
+                datapath = f"../../../../../nustar/fltops/{self._object}/{seqid}"
                 subprocess.run(["nupipeline", datapath, f"nu{seqid}", "./event_cl/", "saamode=STRICT", "tentacle=yes", "clobber=yes"], cwd=path)
-                with open(nupath + "event_cl/processing_flag.txt", "w") as file:
+                with open(path + "event_cl/processing_flag.txt", "w") as file:
                     file.write("PROCESSING COMPLETE")
                 self._contents = os.listdir(path)
                 self._clean = True
