@@ -19,7 +19,7 @@ class NuAnalysis(Observation):
     This class defines an object to be used for performing analysis on a NuSTAR observation.
     """
 
-    def __init__(self, dtime, snr_threshold, path=False, seqid=False, evdir=False, out_path=False, clean=False, bifrost=False, object_name=None):
+    def __init__(self, dtime, snr_threshold, path=False, seqid=False, evdir=False, out_path=False, clean=False, bifrost=False, object_name=None, nupath=None):
         self._snr = snr_threshold
         self._dtime = dtime
         self._clean = clean
@@ -47,8 +47,8 @@ class NuAnalysis(Observation):
                 generate_directory(evdir, overwrite=True)
                 generate_directory(evdir + "event_cl/", overwrite=True)
                 datapath = f"../../../nustar/fltops/{self._object}/{seqid}"
-                subprocess.run(["nupipeline", datapath, f"nu{seqid}", evdir, "saamode=STRICT", "tentacle=yes", "clobber=yes"], shell=True)
-                with open(evdir + "processing_flag.txt", "w") as file:
+                subprocess.run(["nupipeline", datapath, f"nu{seqid}", "./event_cl/", "saamode=STRICT", "tentacle=yes", "clobber=yes"], cwd=nupath)
+                with open(nupath + "event_cl/processing_flag.txt", "w") as file:
                     file.write("PROCESSING COMPLETE")
                 self._contents = os.listdir(path)
                 self._clean = True
