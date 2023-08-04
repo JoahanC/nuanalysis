@@ -19,7 +19,7 @@ class NuAnalysis(Observation):
     This class defines an object to be used for performing analysis on a NuSTAR observation.
     """
 
-    def __init__(self, dtime, snr_threshold, path=False, seqid=False, evdir=False, out_path=False, clean=False, bifrost=False):
+    def __init__(self, dtime, snr_threshold, path=False, seqid=False, evdir=False, out_path=False, clean=False, bifrost=False, object_name=None):
         self._snr = snr_threshold
         self._dtime = dtime
         self._clean = clean
@@ -31,9 +31,20 @@ class NuAnalysis(Observation):
         
         #generate_directory(out_path, overwrite=True)
         if "event_cl" not in self._contents or not clean:
-            #generate_directory(evdir, overwrite=True)
-            subprocess.run(["nupipeline", path, f"nu{seqid}", evdir, "saamode=STRICT", "tentacle=yes", "clobber=yes"])
-            self._clean = True
+            if bifrost:
+                self._object = object_name
+                if self._object == None:
+                    raise AssertionError("OBJECT NAME NOT PROVIDED")
+                generate_directory(evdir, overwrite=True)
+                generate_directory(evdir + "event_cl/", overwrite=True)
+                datapath = f"../../../nustar/fltops/{self._object}/{seqid}"
+                subprocess.run(["nupipeline", datapath, f"nu{seqid}", evdir, "saamode=STRICT", "tentacle=yes", "clobber=yes"])
+                with open(evdir + "event_cl/processing_flag.txt") as file:
+                    file.write("PROCESSING COMPLETE")
+            else:
+                #generate_directory(evdir, overwrite=True)
+                subprocess.run(["nupipeline", path, f"nu{seqid}", evdir, "saamode=STRICT", "tentacle=yes", "clobber=yes"])
+                self._clean = True
         
         super().__init__(path, seqid, evdir, out_path)
 
@@ -60,9 +71,6 @@ class NuAnalysis(Observation):
         print(self.rlimit)
         self._time_bins = self.generate_timebins()
         self._detections = None
-        sky = self.wcs.pixel_to_world(30, 40)
-        sky2 = self.wcs.pixel_to_world(35, 40)
-        print(sky.separation(sky2).arcsecond)
 
     # Mutable properties begin below
 

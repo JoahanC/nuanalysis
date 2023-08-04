@@ -130,12 +130,11 @@ def generate_gti_files(path, tstart, tstop):
     tstop : str or float
         The stopping time of the interval in SCC
     """
-
     with open(path + "xselect.xco", 'w') as script:
         script.write('\n')
         script.write('\n')
         script.write("filter time scc\n")
-        script.write(f"{tstart} , {tstop}\n")
+        script.write(f"{tstart.replace('nu_', '')} , {tstop}\n")
         script.write("x\n")
         script.write("save time keyboard\n")
         script.write(f"{tstart}_{tstop}_gti.fits\n")
@@ -155,7 +154,7 @@ def remove_tmp_folders(path):
         subprocess.run(["rm", "-rf", dir])
 
 
-def make_xselect_commands(infile, outfile, dir, elow, ehigh, usrgti=False):
+def make_xselect_commands(infile, outfile, dir, elow, ehigh, usrgti=False, evt_extract=True):
     '''
     Helper script to generate the xselect commands to make an image in a given NuSTAR range
     '''
@@ -179,6 +178,11 @@ def make_xselect_commands(infile, outfile, dir, elow, ehigh, usrgti=False):
     xsel.write("extract image\n")
     xsel.write("save image\n")
     xsel.write("%s \n" % outfile)
+    if evt_extract:
+        xsel.write("extract events")
+        xsel.write("\n")
+        xsel.write(f"save events {outfile.replace('.fits', '.evt')}\n")
+        xsel.write('no\n')
     xsel.write('exit\n')           
     xsel.write('n \n')
     xsel.close()
