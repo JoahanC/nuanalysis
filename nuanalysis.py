@@ -26,11 +26,20 @@ class NuAnalysis(Observation):
         self._phi_bounds = self.read_in_phi_bounds("nustar_pilow.txt", "nustar_pihi.txt")
         self._refpath = path
         self._refoutpath = out_path
-        self._contents = os.listdir(path)
+        if not bifrost:
+            self._contents = os.listdir(path)
+        if bifrost:
+            if not os.path.isdir(path.replace(seqid, '')):
+                os.mkdir(path.replace(seqid, ''))
+            if not os.path.isdir(path):
+                os.mkdir(path)
+            if not os.path.isdir(evdir):
+                os.mkdir(evdir)
+            self._contents = os.listdir(path)
         generate_directory(self._refoutpath, overwrite=False)
         
         #generate_directory(out_path, overwrite=True)
-        if "event_cl" not in self._contents or not clean:
+        if not clean:
             if bifrost:
                 self._object = object_name
                 if self._object == None:
@@ -41,6 +50,7 @@ class NuAnalysis(Observation):
                 subprocess.run(["nupipeline", datapath, f"nu{seqid}", evdir, "saamode=STRICT", "tentacle=yes", "clobber=yes"])
                 with open(evdir + "event_cl/processing_flag.txt") as file:
                     file.write("PROCESSING COMPLETE")
+                self._contents = os.listdir(path)
             else:
                 #generate_directory(evdir, overwrite=True)
                 subprocess.run(["nupipeline", path, f"nu{seqid}", evdir, "saamode=STRICT", "tentacle=yes", "clobber=yes"])
