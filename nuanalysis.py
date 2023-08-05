@@ -69,8 +69,8 @@ class NuAnalysis(Observation):
             print(f"FILES: {self.science_files['A'][0]}, {self.science_files['B'][0]}")
             infiles = f"{self.science_files['A'][0].replace(self._refpath, '')} , {self.science_files['B'][0].replace(self._refpath, '')}"
             outfile = self._refpath + "science.fits"
-            make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79, sessionid + 1000, evt_extract=True)
-            subprocess.run(["xselect", "@xsel.xco"])
+            name, number = make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79, sessionid + 1000, evt_extract=True)
+            subprocess.run(["xselect", f"@{number}xsel.xco"])
 
         hdu = fits.open(self._refpath + "science.fits", uint=True)[0]
         self.wcs = WCS(hdu.header)

@@ -159,13 +159,12 @@ def make_xselect_commands(infile, outfile, dir, elow, ehigh, sessionid, usrgti=F
     '''
     Helper script to generate the xselect commands to make an image in a given NuSTAR range
     '''
-    
-    xsel=open("xsel.xco","w")
     n1 = random.random()
     n2 = random.random()
     n3 = random.random()
     n4 = random.choice([100, 1000, 10000])
     number = n1*n2*n3*n4
+    xsel=open(f"{number}xsel.xco","w")
     xsel.write(f'{number}\n')
     xsel.write('\n')
     xsel.write(f"{sessionid}\n")
@@ -194,4 +193,4 @@ def make_xselect_commands(infile, outfile, dir, elow, ehigh, sessionid, usrgti=F
     xsel.write('exit\n')           
     xsel.write('n \n')
     xsel.close()
-    return 'xsel.xco'
+    return 'xsel.xco', number
