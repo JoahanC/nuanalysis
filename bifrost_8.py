@@ -16,7 +16,7 @@ for idx in run_order:
     nupath = f"./1/{seqid}/"
     evdir = f"{path}event_cl/"
     out_path = f"{path}products/"
-    run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=False, bifrost=True, object_name=object_name, nupath=nupath)
+    run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=False, bifrost=True, object_name=object_name, nupath=nupath, sessionid=8)
 
 run_order = {}
 counter = 0
@@ -32,7 +32,7 @@ for idx in run_order:
     nupath = f"./1/{seqid}/"
     evdir = f"{path}event_cl/"
     out_path = f"{path}products/"
-    run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=False, bifrost=True, object_name=object_name, nupath=nupath)
+    run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=False, bifrost=True, object_name=object_name, nupath=nupath, sessionid=18)
 
 run_order = {}
 counter = 0
@@ -48,4 +48,4 @@ for idx in run_order:
     nupath = f"./1/{seqid}/"
     evdir = f"{path}event_cl/"
     out_path = f"{path}products/"
-    run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=False, bifrost=True, object_name=object_name, nupath=nupath)
+    run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=False, bifrost=True, object_name=object_name, nupath=nupath, sessionid=28)

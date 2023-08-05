@@ -154,13 +154,13 @@ def remove_tmp_folders(path):
         subprocess.run(["rm", "-rf", dir])
 
 
-def make_xselect_commands(infile, outfile, dir, elow, ehigh, usrgti=False, evt_extract=True):
+def make_xselect_commands(infile, outfile, dir, elow, ehigh, sessionid, usrgti=False, evt_extract=True):
     '''
     Helper script to generate the xselect commands to make an image in a given NuSTAR range
     '''
     
     xsel=open("xsel.xco","w")
-    xsel.write("session1\n")
+    xsel.write(f"{sessionid}\n")
     xsel.write("read events \n")
     xsel.write(f'{dir}\n')
     xsel.write(f'{infile}\n ')

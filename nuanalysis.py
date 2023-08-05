@@ -19,13 +19,14 @@ class NuAnalysis(Observation):
     This class defines an object to be used for performing analysis on a NuSTAR observation.
     """
 
-    def __init__(self, dtime, snr_threshold, path=False, seqid=False, evdir=False, out_path=False, clean=False, bifrost=False, object_name=None, nupath=None):
+    def __init__(self, dtime, snr_threshold, path=False, seqid=False, evdir=False, out_path=False, clean=False, bifrost=False, object_name=None, nupath=None, sessionid=None):
         self._snr = snr_threshold
         self._dtime = dtime
         self._clean = clean
         self._phi_bounds = self.read_in_phi_bounds("nustar_pilow.txt", "nustar_pihi.txt")
         self._refpath = path
         self._refoutpath = out_path
+        self._sessionid = sessionid
         if not bifrost:
             self._contents = os.listdir(path)
         if bifrost:
@@ -67,7 +68,7 @@ class NuAnalysis(Observation):
             print(f"FILES: {self.science_files['A'][0]}, {self.science_files['B'][0]}")
             infiles = f"{self.science_files['A'][0].replace(self._refpath, '')} , {self.science_files['B'][0].replace(self._refpath, '')}"
             outfile = self._refpath + "science.fits"
-            make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79, evt_extract=True)
+            make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79, sessionid, evt_extract=True)
             subprocess.run(["xselect", "@xsel.xco"])
 
         hdu = fits.open(self._refpath + "science.fits", uint=True)[0]
@@ -339,7 +340,7 @@ class NuAnalysis(Observation):
                     continue
                 else:
                     with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
-                        script.write('extraction\n')
+                        script.write(f'{self._sessionid}\n')
                         script.write(f"read events\n")
                         script.write(".\n")
                         script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
@@ -363,7 +364,7 @@ class NuAnalysis(Observation):
                     continue
                 else:
                     with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
-                        script.write('extraction\n')
+                        script.write(f'{self._sessionid}\n')
                         script.write(f"read events\n")
                         script.write(".\n")
                         script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
@@ -458,7 +459,7 @@ class NuAnalysis(Observation):
                     continue
                 else:
                     with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
-                        script.write('extraction\n')
+                        script.write(f'{self._sessionid}\n')
                         script.write(f"read events\n")
                         script.write(".\n")
                         script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
@@ -482,7 +483,7 @@ class NuAnalysis(Observation):
                     continue
                 else:
                     with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
-                        script.write('extraction\n')
+                        script.write(f'{self._sessionid}\n')
                         script.write(f"read events\n")
                         script.write(".\n")
                         script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
