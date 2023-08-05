@@ -1,6 +1,7 @@
 import os
 import subprocess
 import glob
+import random
 import numpy as np
 import matplotlib.pyplot as plt
 from nustar import *
@@ -68,7 +69,7 @@ class NuAnalysis(Observation):
             print(f"FILES: {self.science_files['A'][0]}, {self.science_files['B'][0]}")
             infiles = f"{self.science_files['A'][0].replace(self._refpath, '')} , {self.science_files['B'][0].replace(self._refpath, '')}"
             outfile = self._refpath + "science.fits"
-            make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79, sessionid, evt_extract=True)
+            make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79, sessionid + 1000, evt_extract=True)
             subprocess.run(["xselect", "@xsel.xco"])
 
         hdu = fits.open(self._refpath + "science.fits", uint=True)[0]
@@ -459,7 +460,13 @@ class NuAnalysis(Observation):
                     continue
                 else:
                     with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
-                        script.write(f'{self._sessionid}\n')
+                        n1 = random.random()
+                        n2 = random.random()
+                        n3 = random.random()
+                        n4 = random.choice([100, 1000, 10000])
+                        number = n1*n2*n3*n4
+                        script.write(f'{number}\n')
+                        script.write('\n')
                         script.write(f"read events\n")
                         script.write(".\n")
                         script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")
@@ -483,7 +490,13 @@ class NuAnalysis(Observation):
                     continue
                 else:
                     with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
-                        script.write(f'{self._sessionid}\n')
+                        n1 = random.random()
+                        n2 = random.random()
+                        n3 = random.random()
+                        n4 = random.choice([100, 1000, 10000])
+                        number = n1*n2*n3*n4
+                        script.write(f'{number}\n')
+                        script.write('\n')
                         script.write(f"read events\n")
                         script.write(".\n")
                         script.write(f"nu{self._seqid}A01_cl.evt , nu{self._seqid}B01_cl.evt\n")

@@ -1,6 +1,7 @@
 import glob
 import os
 import subprocess
+import random
 from utils import energy_to_chan
 
 
@@ -160,6 +161,13 @@ def make_xselect_commands(infile, outfile, dir, elow, ehigh, sessionid, usrgti=F
     '''
     
     xsel=open("xsel.xco","w")
+    n1 = random.random()
+    n2 = random.random()
+    n3 = random.random()
+    n4 = random.choice([100, 1000, 10000])
+    number = n1*n2*n3*n4
+    xsel.write(f'{number}\n')
+    xsel.write('\n')
     xsel.write(f"{sessionid}\n")
     xsel.write("read events \n")
     xsel.write(f'{dir}\n')
