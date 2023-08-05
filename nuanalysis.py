@@ -71,6 +71,7 @@ class NuAnalysis(Observation):
             outfile = self._refpath + "science.fits"
             name, number = make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79, sessionid + 1000, evt_extract=True)
             subprocess.run(["xselect", f"@{number}xsel.xco"])
+            subprocess.run(["rm", f"@{number}xsel.xco"])
 
         hdu = fits.open(self._refpath + "science.fits", uint=True)[0]
         self.wcs = WCS(hdu.header)
