@@ -59,32 +59,32 @@ class NuAnalysis(Observation):
                 subprocess.run(["nupipeline", path, f"nu{seqid}", evdir, "saamode=STRICT", "tentacle=yes", "clobber=yes"])
                 self._clean = True
         
-        super().__init__(path, seqid, evdir, out_path)
+        #super().__init__(path, seqid, evdir, out_path)
 
         if not self._clean:
             self.run_cleaning_script()
 
-        if "science.fits" not in self._contents:
-            print("Generating Science FITS image")
-            print(f"FILES: {self.science_files['A'][0]}, {self.science_files['B'][0]}")
-            infiles = f"{self.science_files['A'][0].replace(self._refpath, '')} , {self.science_files['B'][0].replace(self._refpath, '')}"
-            outfile = self._refpath + "science.fits"
-            name, number = make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79, sessionid + 1000, evt_extract=True)
-            subprocess.run(["xselect", f"@{number}xsel.xco"])
-            subprocess.run(["rm", f"@{number}xsel.xco"])
+        #if "science.fits" not in self._contents:
+        #    print("Generating Science FITS image")
+        #    print(f"FILES: {self.science_files['A'][0]}, {self.science_files['B'][0]}")
+        #    infiles = f"{self.science_files['A'][0].replace(self._refpath, '')} , {self.science_files['B'][0].replace(self._refpath, '')}"
+        #    outfile = self._refpath + "science.fits"
+        #    name, number = make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79, sessionid + 1000, evt_extract=True)
+        #    subprocess.run(["xselect", f"@{number}xsel.xco"])
+        #    subprocess.run(["rm", f"{number}xsel.xco"])
 
-        hdu = fits.open(self._refpath + "science.fits", uint=True)[0]
-        self.wcs = WCS(hdu.header)
-        self.data = hdu.data
-        self.coords = (hdu.header["RA_OBJ"], hdu.header["DEC_OBJ"])
-        coordinates = radial_profile.find_source(self._refpath + "science.fits", show_image=False, filt_range=3)
+        #hdu = fits.open(self._refpath + "science.fits", uint=True)[0]
+        #self.wcs = WCS(hdu.header)
+        #self.data = hdu.data
+        #self.coords = (hdu.header["RA_OBJ"], hdu.header["DEC_OBJ"])
+        #coordinates = radial_profile.find_source(self._refpath + "science.fits", show_image=False, filt_range=3)
         
-        rind, rad_profile, radial_err, psf_profile = radial_profile.make_radial_profile(self._refpath + "science.fits", show_image=False,
-                                                                 coordinates = coordinates)
-        self.rlimit = radial_profile.optimize_radius_snr(rind, rad_profile, radial_err, psf_profile, show=False)
-        print(self.rlimit)
-        self._time_bins = self.generate_timebins()
-        self._detections = None
+        #rind, rad_profile, radial_err, psf_profile = radial_profile.make_radial_profile(self._refpath + "science.fits", show_image=False,
+        #                                                         coordinates = coordinates)
+        #self.rlimit = radial_profile.optimize_radius_snr(rind, rad_profile, radial_err, psf_profile, show=False)
+        #print(self.rlimit)
+        #self._time_bins = self.generate_timebins()
+        #self._detections = None
 
     # Mutable properties begin below
 

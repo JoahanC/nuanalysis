@@ -4,22 +4,6 @@ from nuanalysis import NuAnalysis
 
 run_order = {}
 counter = 0
-with open("../test/runlist_1.txt", 'r') as run_file:
-    run_data = run_file.readlines()
-for idx, datum in enumerate(run_data):
-    run_order[idx] = datum.split()
-
-for idx in run_order:
-    object_name = run_order[idx][0]
-    seqid = run_order[idx][1]
-    path = f"../bifrost_data/1/{seqid}/"
-    nupath = f"./1/{seqid}/"
-    evdir = f"{path}event_cl/"
-    out_path = f"{path}products/"
-    run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=False, bifrost=True, object_name=object_name, nupath=nupath, sessionid=1)
-
-run_order = {}
-counter = 0
 with open("../test/runlist_11.txt", 'r') as run_file:
     run_data = run_file.readlines()
 for idx, datum in enumerate(run_data):
@@ -28,11 +12,12 @@ for idx, datum in enumerate(run_data):
 for idx in run_order:
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
-    path = f"../bifrost_data/11/{seqid}/"
-    nupath = f"./1/{seqid}/"
-    evdir = f"{path}event_cl/"
-    out_path = f"{path}products/"
-    run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=False, bifrost=True, object_name=object_name, nupath=nupath, sessionid=11)
+    if seqid not in os.listdir(f"../bifrost_data/11/"):
+        path = f"../bifrost_data/11/{seqid}/"
+        nupath = f"./1/{seqid}/"
+        evdir = f"{path}event_cl/"
+        out_path = f"{path}products/"
+        run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=False, bifrost=True, object_name=object_name, nupath=nupath, sessionid=11)
 
 run_order = {}
 counter = 0
@@ -44,11 +29,12 @@ for idx, datum in enumerate(run_data):
 for idx in run_order:
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
-    path = f"../bifrost_data/21/{seqid}/"
-    nupath = f"./1/{seqid}/"
-    evdir = f"{path}event_cl/"
-    out_path = f"{path}products/"
-    run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=False, bifrost=True, object_name=object_name, nupath=nupath, sessionid=21)
+    if seqid not in os.listdir(f"../bifrost_data/21/"):
+        path = f"../bifrost_data/21/{seqid}/"
+        nupath = f"./1/{seqid}/"
+        evdir = f"{path}event_cl/"
+        out_path = f"{path}products/"
+        run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=False, bifrost=True, object_name=object_name, nupath=nupath, sessionid=21)
 
 run_order = {}
 counter = 0
@@ -60,8 +46,9 @@ for idx, datum in enumerate(run_data):
 for idx in run_order:
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
-    path = f"../bifrost_data/31/{seqid}/"
-    nupath = f"./1/{seqid}/"
-    evdir = f"{path}event_cl/"
-    out_path = f"{path}products/"
-    run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=False, bifrost=True, object_name=object_name, nupath=nupath, sessionid=31)
+    if seqid not in os.listdir(f"../bifrost_data/31/"):
+        path = f"../bifrost_data/31/{seqid}/"
+        nupath = f"./1/{seqid}/"
+        evdir = f"{path}event_cl/"
+        out_path = f"{path}products/"
+        run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=False, bifrost=True, object_name=object_name, nupath=nupath, sessionid=31)
