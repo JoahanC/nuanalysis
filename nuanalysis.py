@@ -58,9 +58,9 @@ class NuAnalysis(Observation):
                 #generate_directory(evdir, overwrite=True)
                 subprocess.run(["nupipeline", path, f"nu{seqid}", evdir, "saamode=STRICT", "tentacle=yes", "clobber=yes"])
                 self._clean = True
-        
+        print('here')
         super().__init__(path, seqid, evdir, out_path)
-
+        print('here2')
         if not self._clean:
             self.run_cleaning_script()
 
@@ -83,9 +83,7 @@ class NuAnalysis(Observation):
         #                                                         coordinates = coordinates)
         #self.rlimit = radial_profile.optimize_radius_snr(rind, rad_profile, radial_err, psf_profile, show=False)
         #print(self.rlimit)
-        print('here')
         self._time_bins = self.generate_timebins()
-        print('here2')
         #self._detections = None
 
     # Mutable properties begin below
