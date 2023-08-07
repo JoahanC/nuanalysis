@@ -336,11 +336,8 @@ class Observation():
         
         # Check to make sure this exiss:
         assert os.path.isdir(self.evdir), f'Event file path does not exist! {self.evdir}'
-        print('here')
         self._find_cleaned_files()
-        print('here2')
         self._parse_header()
-        print('here3')
 
 
     def set_outpath(self, value):
@@ -388,10 +385,11 @@ class Observation():
                             self._exposure[keystr] = hdr['EXPOSURE']
                         else:
                             self._exposure[keystr] += hdr['EXPOSURE']
+        print('here2')
         evt_array = getdata(self.science_files[mod][0])
         for evt in evt_array:
             self._event_times.append(evt[0])
-        
+        print('here3')
         return
         
 
