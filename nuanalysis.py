@@ -20,7 +20,7 @@ class NuAnalysis(Observation):
     This class defines an object to be used for performing analysis on a NuSTAR observation.
     """
 
-    def __init__(self, dtime, snr_threshold, path=False, seqid=False, evdir=False, out_path=False, clean=False, bifrost=False, object_name=None, nupath=None, sessionid=None):
+    def __init__(self, dtime, snr_threshold, path=False, seqid=False, evdir=False, out_path=False, clean=False, bifrost=False, object_name=None, sessionid=None):
         self._snr = snr_threshold
         self._dtime = dtime
         self._clean = clean
@@ -59,7 +59,7 @@ class NuAnalysis(Observation):
                 subprocess.run(["nupipeline", path, f"nu{seqid}", evdir, "saamode=STRICT", "tentacle=yes", "clobber=yes"])
                 self._clean = True
         
-        #super().__init__(path, seqid, evdir, out_path)
+        super().__init__(path, seqid, evdir, out_path)
 
         if not self._clean:
             self.run_cleaning_script()
@@ -360,6 +360,8 @@ class NuAnalysis(Observation):
                         script.write("exit no\n")
                     subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
                     subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
+                    with open(self._evdir + f"{self._dtime}_binning_flag.txt", "w") as file:
+                        file.write("PROCESSING COMPLETE")
             print(f"Binning data: PHI Bound {bound[0]}-{bound[1]}; Cycle 2")
             for interval in tqdm(self._time_bins[1]):
                 if len(self._time_bins[1][interval][2]) == 0:
@@ -384,6 +386,8 @@ class NuAnalysis(Observation):
                         script.write("exit no\n")
                     subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
                     subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
+                    with open(self._evdir + f"{self._dtime}_binning_flag.txt", "w") as file:
+                        file.write("PROCESSING COMPLETE")
 
 
     def sliding_cell_detection(self):
