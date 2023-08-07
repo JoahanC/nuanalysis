@@ -192,7 +192,6 @@ class Observation():
         if evdir is not False:
             evdir = evdir#os.path.abspath(evdir)
             self._set_evdir(evdir, lock=True)
-        print('here')
         if seqid is False:
             self._seqid=False
         else:
@@ -203,7 +202,6 @@ class Observation():
         else:
             out_path = os.path.abspath(out_path)
             self.set_outpath(out_path)
-        print('here2')
 
     # Mutable properties begin below
 
@@ -335,11 +333,12 @@ class Observation():
         if self._evdir_lock is False:
             default_datapath = os.path.join(self._path, self._seqid)
             self._set_evdir(os.path.join(default_datapath, 'event_cl'))
-
+        print('here')
         # Check to make sure this exiss:
         assert os.path.isdir(self.evdir), f'Event file path does not exist! {self.evdir}'
         self._find_cleaned_files()
         self._parse_header()
+        print('here2')
 
 
     def set_outpath(self, value):
