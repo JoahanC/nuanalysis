@@ -12,8 +12,8 @@ for idx, datum in enumerate(run_data):
 for idx in run_order:
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
-    if f"nu{seqid}A01_cl.evt" in os.listdir(f"../bifrost_data/4/{seqid}"):
-        if f"nu{seqid}B01_cl.evt" in os.listdir(f"../bifrost_data/4/{seqid}"):
+    if f"nu{seqid}A01_cl.evt" in os.listdir(f"../bifrost_data/4/{seqid}/event_cl/"):
+        if f"nu{seqid}B01_cl.evt" in os.listdir(f"../bifrost_data/4/{seqid}/event_cl/"):
             path = f"../bifrost_data/4/{seqid}/"
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
@@ -29,8 +29,8 @@ for idx, datum in enumerate(run_data):
 for idx in run_order:
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
-    if f"nu{seqid}A01_cl.evt" in os.listdir(f"../bifrost_data/14/{seqid}"):
-        if f"nu{seqid}B01_cl.evt" in os.listdir(f"../bifrost_data/14/{seqid}"):
+    if f"nu{seqid}A01_cl.evt" in os.listdir(f"../bifrost_data/14/{seqid}/event_cl/"):
+        if f"nu{seqid}B01_cl.evt" in os.listdir(f"../bifrost_data/14/{seqid}/event_cl/"):
             path = f"../bifrost_data/14/{seqid}/"
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
@@ -46,8 +46,8 @@ for idx, datum in enumerate(run_data):
 for idx in run_order:
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
-    if f"nu{seqid}A01_cl.evt" in os.listdir(f"../bifrost_data/24/{seqid}"):
-        if f"nu{seqid}B01_cl.evt" in os.listdir(f"../bifrost_data/24/{seqid}"):
+    if f"nu{seqid}A01_cl.evt" in os.listdir(f"../bifrost_data/24/{seqid}/event_cl/"):
+        if f"nu{seqid}B01_cl.evt" in os.listdir(f"../bifrost_data/24/{seqid}/event_cl/"):
             path = f"../bifrost_data/24/{seqid}/"
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
