@@ -386,10 +386,7 @@ class Observation():
                         else:
                             self._exposure[keystr] += hdr['EXPOSURE']
         evt_array = getdata(self.science_files[mod][0])
-        counter = 0
         for evt in evt_array:
-            print(counter)
-            counter += 1
             self._event_times.append(evt[0])
         
         return
