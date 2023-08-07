@@ -246,6 +246,7 @@ class NuAnalysis(Observation):
         cur_int = self._event_times[0]
         max_int = np.max(self._event_times)
         while cur_int < max_int:
+            print(cur_int, max_int)
             intervals_p1.append(cur_int)
             cur_int += self._dtime
         intervals_p1.append(max_int)
