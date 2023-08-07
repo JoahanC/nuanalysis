@@ -83,7 +83,9 @@ class NuAnalysis(Observation):
         #                                                         coordinates = coordinates)
         #self.rlimit = radial_profile.optimize_radius_snr(rind, rad_profile, radial_err, psf_profile, show=False)
         #print(self.rlimit)
+        print('here')
         self._time_bins = self.generate_timebins()
+        print('here2')
         #self._detections = None
 
     # Mutable properties begin below
@@ -246,7 +248,6 @@ class NuAnalysis(Observation):
         cur_int = self._event_times[0]
         max_int = np.max(self._event_times)
         while cur_int < max_int:
-            print(cur_int, max_int)
             intervals_p1.append(cur_int)
             cur_int += self._dtime
         intervals_p1.append(max_int)
@@ -257,7 +258,6 @@ class NuAnalysis(Observation):
         cur_int = self._event_times[0] + self._dtime / 2
         max_int = np.max(self._event_times)
         while cur_int < max_int:
-            print(cur_int, max_int)
             intervals_p2.append(cur_int)
             cur_int += self._dtime 
         intervals_p2.append(max_int)
