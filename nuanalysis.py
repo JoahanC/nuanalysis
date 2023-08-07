@@ -83,7 +83,7 @@ class NuAnalysis(Observation):
         #                                                         coordinates = coordinates)
         #self.rlimit = radial_profile.optimize_radius_snr(rind, rad_profile, radial_err, psf_profile, show=False)
         #print(self.rlimit)
-        #self._time_bins = self.generate_timebins()
+        self._time_bins = self.generate_timebins()
         #self._detections = None
 
     # Mutable properties begin below
