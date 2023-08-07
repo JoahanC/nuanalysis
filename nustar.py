@@ -370,7 +370,7 @@ class Observation():
         
         self._exposure = {}
         self._event_times = []
-        
+        print('here')
         for mod in self.modules:
             for evtfile in self.science_files[mod]:
                 hdr = getheader(evtfile)
@@ -387,7 +387,7 @@ class Observation():
                             self._exposure[keystr] = hdr['EXPOSURE']
                         else:
                             self._exposure[keystr] += hdr['EXPOSURE']
-        
+        print('here2')
         evt_array = getdata(self.science_files[mod][0])
         for evt in evt_array:
             self._event_times.append(evt[0])
