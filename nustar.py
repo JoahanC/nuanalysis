@@ -192,12 +192,12 @@ class Observation():
         if evdir is not False:
             evdir = evdir#os.path.abspath(evdir)
             self._set_evdir(evdir, lock=True)
-            
+        print('here')
         if seqid is False:
             self._seqid=False
         else:
             self._set_seqid(seqid)
-        print('here')
+        
         if out_path is False:
             self.set_outpath(self.evdir)
         else:
