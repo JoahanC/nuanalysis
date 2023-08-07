@@ -58,9 +58,9 @@ class NuAnalysis(Observation):
                 #generate_directory(evdir, overwrite=True)
                 subprocess.run(["nupipeline", path, f"nu{seqid}", evdir, "saamode=STRICT", "tentacle=yes", "clobber=yes"])
                 self._clean = True
-        print('here')
+        
         super().__init__(path, seqid, evdir, out_path)
-        print('here2')
+        
         if not self._clean:
             self.run_cleaning_script()
 
