@@ -409,6 +409,8 @@ class NuAnalysis(Observation):
                         script.write("exit")
                     subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
                     subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
+                    with open(running_directory + f"{self._dtime}_flag.txt", 'w') as file:
+                        file.write("DONE")
 
     
     def detection_merging(self):
