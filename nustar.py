@@ -333,12 +333,14 @@ class Observation():
         if self._evdir_lock is False:
             default_datapath = os.path.join(self._path, self._seqid)
             self._set_evdir(os.path.join(default_datapath, 'event_cl'))
-        print('here')
+        
         # Check to make sure this exiss:
         assert os.path.isdir(self.evdir), f'Event file path does not exist! {self.evdir}'
+        print('here')
         self._find_cleaned_files()
-        self._parse_header()
         print('here2')
+        self._parse_header()
+        print('here3')
 
 
     def set_outpath(self, value):
