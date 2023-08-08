@@ -14,7 +14,7 @@ for idx in run_order:
     seqid = run_order[idx][1]
     if f"nu{seqid}A01_cl.evt" in os.listdir(f"../bifrost_data/3/{seqid}/event_cl/"):
         if f"nu{seqid}B01_cl.evt" in os.listdir(f"../bifrost_data/3/{seqid}/event_cl/"):
-            if "5000_flag.txt" not in os.listdir(f"../bifrost_data/3/{seqid}/event_cl/"):
+            if "5000_binning_flag.txt" not in os.listdir(f"../bifrost_data/3/{seqid}/event_cl/"):
                 print(seqid)
                 path = f"../bifrost_data/3/{seqid}/"
                 evdir = f"{path}event_cl/"
@@ -34,7 +34,7 @@ for idx in run_order:
     seqid = run_order[idx][1]
     if f"nu{seqid}A01_cl.evt" in os.listdir(f"../bifrost_data/13/{seqid}/event_cl/"):
         if f"nu{seqid}B01_cl.evt" in os.listdir(f"../bifrost_data/13/{seqid}/event_cl/"):
-            if "5000_flag.txt" not in os.listdir(f"../bifrost_data/13/{seqid}/event_cl/"):
+            if "5000_binning_flag.txt" not in os.listdir(f"../bifrost_data/13/{seqid}/event_cl/"):
                 print(seqid)
                 path = f"../bifrost_data/13/{seqid}/"
                 evdir = f"{path}event_cl/"
@@ -54,7 +54,7 @@ for idx in run_order:
     seqid = run_order[idx][1]
     if f"nu{seqid}A01_cl.evt" in os.listdir(f"../bifrost_data/23/{seqid}/event_cl/"):
         if f"nu{seqid}B01_cl.evt" in os.listdir(f"../bifrost_data/23/{seqid}/event_cl/"):
-            if "5000_flag.txt" not in os.listdir(f"../bifrost_data/23/{seqid}/event_cl/"):
+            if "5000_binning_flag.txt" not in os.listdir(f"../bifrost_data/23/{seqid}/event_cl/"):
                 print(seqid)
                 path = f"../bifrost_data/23/{seqid}/"
                 evdir = f"{path}event_cl/"
