@@ -21,5 +21,7 @@ table_files = glob.glob(basepath)
 total_table = Table.read(table_files[0], format='ipac')
 for file in table_files[1:]:
     data_table = Table.read(file, format='ipac')
+    if len(data_table['RA']) == 0:
+        continue
     total_table = vstack([total_table, data_table])
 total_table.write("complete.tbl", format='ipac')
