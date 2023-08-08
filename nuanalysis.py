@@ -771,6 +771,7 @@ class NuAnalysis(Observation):
                 count_err_vals = [counts.split('+/-')[1] for counts in trimmed_all_info["COUNTS"]]
                 trimmed_all_info["COUNTS"] = count_vals
                 trimmed_all_info["COUNTSERR"] = count_err_vals
+                trimmed_all_info["SEQID"] = [self._seqid for i in range(n_obj)]
 
                 del trimmed_all_info["TIMES"]
                 # Construct and write table
