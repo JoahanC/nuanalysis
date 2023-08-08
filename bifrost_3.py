@@ -14,11 +14,13 @@ for idx in run_order:
     seqid = run_order[idx][1]
     if f"nu{seqid}A01_cl.evt" in os.listdir(f"../bifrost_data/3/{seqid}/event_cl/"):
         if f"nu{seqid}B01_cl.evt" in os.listdir(f"../bifrost_data/3/{seqid}/event_cl/"):
-            path = f"../bifrost_data/3/{seqid}/"
-            evdir = f"{path}event_cl/"
-            out_path = f"{path}products/"
-            run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=3)
-            run_object.event_extraction()
+            if "5000_flag.txt" not in os.listdir(f"../bifrost_data/3/{seqid}/event_cl/"):
+                print(seqid)
+                path = f"../bifrost_data/3/{seqid}/"
+                evdir = f"{path}event_cl/"
+                out_path = f"{path}products/"
+                run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=3)
+                run_object.event_extraction()
 
 run_order = {}
 counter = 0
@@ -32,11 +34,13 @@ for idx in run_order:
     seqid = run_order[idx][1]
     if f"nu{seqid}A01_cl.evt" in os.listdir(f"../bifrost_data/13/{seqid}/event_cl/"):
         if f"nu{seqid}B01_cl.evt" in os.listdir(f"../bifrost_data/13/{seqid}/event_cl/"):
-            path = f"../bifrost_data/13/{seqid}/"
-            evdir = f"{path}event_cl/"
-            out_path = f"{path}products/"
-            run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=13)
-            run_object.event_extraction()
+            if "5000_flag.txt" not in os.listdir(f"../bifrost_data/13/{seqid}/event_cl/"):
+                print(seqid)
+                path = f"../bifrost_data/13/{seqid}/"
+                evdir = f"{path}event_cl/"
+                out_path = f"{path}products/"
+                run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=13)
+                run_object.event_extraction()
 
 run_order = {}
 counter = 0
@@ -50,8 +54,10 @@ for idx in run_order:
     seqid = run_order[idx][1]
     if f"nu{seqid}A01_cl.evt" in os.listdir(f"../bifrost_data/23/{seqid}/event_cl/"):
         if f"nu{seqid}B01_cl.evt" in os.listdir(f"../bifrost_data/23/{seqid}/event_cl/"):
-            path = f"../bifrost_data/23/{seqid}/"
-            evdir = f"{path}event_cl/"
-            out_path = f"{path}products/"
-            run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=23)
-            run_object.event_extraction()
+            if "5000_flag.txt" not in os.listdir(f"../bifrost_data/23/{seqid}/event_cl/"):
+                print(seqid)
+                path = f"../bifrost_data/23/{seqid}/"
+                evdir = f"{path}event_cl/"
+                out_path = f"{path}products/"
+                run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=23)
+                run_object.event_extraction()
