@@ -9,6 +9,7 @@ from helpers import *
 from astropy.io import fits
 from astropy import units as u
 from astropy.wcs import WCS
+from astropy.table import QTable, Table, Column
 from tqdm import tqdm
 import radial_profile
 from astropy.coordinates import SkyCoord
@@ -21,6 +22,7 @@ class NuAnalysis(Observation):
     """
 
     def __init__(self, dtime, snr_threshold, path=False, seqid=False, evdir=False, out_path=False, clean=False, bifrost=False, object_name=None, sessionid=None):
+        # Define analysis parameters
         self._snr = snr_threshold
         self._dtime = dtime
         self._clean = clean
@@ -28,6 +30,8 @@ class NuAnalysis(Observation):
         self._refpath = path
         self._refoutpath = out_path
         self._sessionid = sessionid
+        
+        # Modifies for server performance and fidelity
         if not bifrost:
             self._contents = os.listdir(path)
         if bifrost:
@@ -40,7 +44,6 @@ class NuAnalysis(Observation):
             self._contents = os.listdir(path)
         generate_directory(self._refoutpath, overwrite=False)
         
-        #generate_directory(out_path, overwrite=True)
         if not clean:
             if bifrost:
                 self._object = object_name
@@ -750,6 +753,16 @@ class NuAnalysis(Observation):
         
         self._detections = trimmed_all_info
         return trimmed_all_info
+    
+
+    def write_net_detections(self):
+        for bound in self._phi_bounds:
+            trimmed_all_info = self.detection_dir_processing(bound)
+            detect_table = Table()
+            for key in trimmed_all_info:
+                detect_table[key] = trimmed_all_info[key]
+            detect_table.write(self._evdir + f"detections/{self._dtime}.tbl", format='latex')
+
 
 
     def nuproducts(self, detect_info, pi_bounds):
