@@ -13,6 +13,7 @@ for idx in run_order:
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
     if f"5000_binning_flag.txt" in os.listdir(f"../bifrost_data/9/{seqid}/event_cl/"):
+        print(seqid)
         path = f"../bifrost_data/9/{seqid}/"
         evdir = f"{path}event_cl/"
         out_path = f"{path}products/"
@@ -30,6 +31,7 @@ for idx in run_order:
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
     if f"5000_binning_flag.txt" in os.listdir(f"../bifrost_data/19/{seqid}/event_cl/"):
+        print(seqid)
         path = f"../bifrost_data/19/{seqid}/"
         evdir = f"{path}event_cl/"
         out_path = f"{path}products/"
@@ -47,6 +49,7 @@ for idx in run_order:
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
     if f"5000_binning_flag.txt" in os.listdir(f"../bifrost_data/29/{seqid}/event_cl/"):
+        print(seqid)
         path = f"../bifrost_data/29/{seqid}/"
         evdir = f"{path}event_cl/"
         out_path = f"{path}products/"
