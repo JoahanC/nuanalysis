@@ -13,7 +13,7 @@ for idx, datum in enumerate(run_data):
 for idx in run_order:
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
-    if f"5000_binning_flag.txt" in os.listdir(f"../bifrost_data/1/{seqid}/event_cl/"):
+    if f"5000_flag.txt" in os.listdir(f"../bifrost_data/1/{seqid}/event_cl/"):
         path = f"../bifrost_data/1/{seqid}/"
         evdir = f"{path}event_cl/"
         out_path = f"{path}products/"
@@ -30,7 +30,7 @@ for idx, datum in enumerate(run_data):
 for idx in run_order:
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
-    if f"5000_binning_flag.txt" in os.listdir(f"../bifrost_data/11/{seqid}/event_cl/"):
+    if f"5000_flag.txt" in os.listdir(f"../bifrost_data/11/{seqid}/event_cl/"):
         path = f"../bifrost_data/11/{seqid}/"
         evdir = f"{path}event_cl/"
         out_path = f"{path}products/"
@@ -47,7 +47,7 @@ for idx, datum in enumerate(run_data):
 for idx in run_order:
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
-    if f"5000_binning_flag.txt" in os.listdir(f"../bifrost_data/21/{seqid}/event_cl/"):
+    if f"5000_flag.txt" in os.listdir(f"../bifrost_data/21/{seqid}/event_cl/"):
         path = f"../bifrost_data/21/{seqid}/"
         evdir = f"{path}event_cl/"
         out_path = f"{path}products/"
@@ -64,7 +64,7 @@ for idx, datum in enumerate(run_data):
 for idx in run_order:
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
-    if f"5000_binning_flag.txt" in os.listdir(f"../bifrost_data/31/{seqid}/event_cl/"):
+    if f"5000_flag.txt" in os.listdir(f"../bifrost_data/31/{seqid}/event_cl/"):
         path = f"../bifrost_data/31/{seqid}/"
         evdir = f"{path}event_cl/"
         out_path = f"{path}products/"
