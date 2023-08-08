@@ -615,7 +615,8 @@ class NuAnalysis(Observation):
         None
         """
 
-        
+        if not os.path.isdir(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/"):
+            return None
         if "mrg.txt" not in os.listdir(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/"):
             return None           
 
