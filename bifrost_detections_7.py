@@ -19,7 +19,8 @@ for idx in tqdm(run_order):
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
             run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=7)
-            run_object.detection_merging()
+            #run_object.detection_merging()
+            run_object.write_net_detections()
 
 run_order = {}
 counter = 0
@@ -37,7 +38,8 @@ for idx in tqdm(run_order):
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
             run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=17)
-            run_object.detection_merging()
+            #run_object.detection_merging()
+            run_object.write_net_detections()
 
 run_order = {}
 counter = 0
@@ -55,4 +57,5 @@ for idx in tqdm(run_order):
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
             run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=27)
-            run_object.detection_merging()
+            #run_object.detection_merging()
+            run_object.write_net_detections()
