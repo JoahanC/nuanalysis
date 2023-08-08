@@ -18,7 +18,7 @@ from regions import CircleSkyRegion
 
 basepath = "./../bifrost_data/**/**/detections/5000.tbl"
 table_files = glob.glob(basepath)
-total_table = Table.read(table_files[0], formate='ascii.ipac')
+total_table = Table.read(table_files[0], format='ipac')
 for file in table_files[1:]:
     data_table = Table.read(file, format='ipac')
     total_table = vstack(total_table, data_table)
