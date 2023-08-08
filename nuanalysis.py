@@ -653,8 +653,8 @@ class NuAnalysis(Observation):
     def read_detection_dir(self, bounds):
         det_files = glob.glob(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/*.det")
         detect_info = {}
-        print(f"READING ALL DETECTIONS: {bounds}")
-        print(len(det_files))
+        #print(f"READING ALL DETECTIONS: {bounds}")
+        #print(len(det_files))
         for file in det_files:
             with open(file) as detections:
                 for i in range(14):
@@ -758,10 +758,11 @@ class NuAnalysis(Observation):
     def write_net_detections(self):
         for bound in self._phi_bounds:
             trimmed_all_info = self.detection_dir_processing(bound)
-            detect_table = Table()
-            for key in trimmed_all_info:
-                detect_table[key] = trimmed_all_info[key]
-            detect_table.write(self._refpath + f"detections/{self._dtime}.tbl", format='latex', overwrite=True)
+            if trimmed_all_info != None:
+                detect_table = Table()
+                for key in trimmed_all_info:
+                    detect_table[key] = trimmed_all_info[key]
+                detect_table.write(self._refpath + f"detections/{self._dtime}.tbl", format='latex', overwrite=True)
 
 
 
