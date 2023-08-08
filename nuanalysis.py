@@ -761,8 +761,9 @@ class NuAnalysis(Observation):
             if trimmed_all_info != None:
                 detect_table = Table()
                 for key in trimmed_all_info:
-                    detect_table[key] = trimmed_all_info[key]
-                detect_table.write(self._refpath + f"detections/{self._dtime}.tbl", format='ipac', overwrite=True)
+                    print(key, trimmed_all_info[key])
+                    #detect_table[key] = trimmed_all_info[key]
+                #detect_table.write(self._refpath + f"detections/{self._dtime}.tbl", format='ipac', overwrite=True)
 
 
 
