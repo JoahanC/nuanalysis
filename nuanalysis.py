@@ -433,8 +433,8 @@ class NuAnalysis(Observation):
                 with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/src_merge.xco", 'w') as script:
                     script.write(script_string)
                     script.write("exit\n")
-                subprocess.run(["ximage", "@src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
-                subprocess.run(["rm", "src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}")
+                subprocess.run(["ximage", "@src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}", capture_output=True)
+                subprocess.run(["rm", "src_merge.xco"], cwd=self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}", capture_output=True)
 
 
     def run_detection_pipeline(self):
@@ -720,18 +720,15 @@ class NuAnalysis(Observation):
         unique_detect_info = self.read_unique_detections(bounds)
         if unique_detect_info == None:
             return None
-        #print(f"Unique detections found for PI {bounds[0]}-{bounds[1]}: {len(unique_detect_info['INDEX'])}")
 
         # Read in all detections for a given PI channel range
         all_detect_info = self.read_detection_dir(bounds)
         n_all_det = 0
         for time in all_detect_info:
             n_all_det += len(all_detect_info[time]["INDEX"])
-        #print(f"All detections found for PI {bounds[0]}-{bounds[1]}: {len(unique_detect_info['INDEX'])}")
 
         # Begin by eliminating the main source
         trimmed_detect_info = self.remove_main_source(unique_detect_info)
-        #print(f"Unique non main source detections found for PI {bounds[0]}-{bounds[1]}: {len(trimmed_detect_info['INDEX'])}")
         
         # Now remove duplicates and save time slots
         trimmed_all_info = {}
