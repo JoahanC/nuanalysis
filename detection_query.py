@@ -11,3 +11,4 @@ radius = 32 * u.arcsecond
 for idx in tqdm(range(len(total_table['RA']))):
     pos = SkyCoord(f"{total_table['RA'][idx]} {total_table['DEC'][idx]}", unit=(u.hourangle, u.deg))
     result_table = Vizier.query_region(pos, radius=radius)
+    print(result_table)
