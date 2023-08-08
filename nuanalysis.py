@@ -761,7 +761,7 @@ class NuAnalysis(Observation):
             detect_table = Table()
             for key in trimmed_all_info:
                 detect_table[key] = trimmed_all_info[key]
-            detect_table.write(self._evdir + f"detections/{self._dtime}.tbl", format='latex')
+            detect_table.write(self._refpath + f"detections/{self._dtime}.tbl", format='latex')
 
 
 
