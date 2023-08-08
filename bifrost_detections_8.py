@@ -1,5 +1,6 @@
 from helpers import *
 from nuanalysis import NuAnalysis
+from tqdm import tqdm
 
 
 run_order = {}
@@ -9,7 +10,7 @@ with open("../test/runlist_8.txt", 'r') as run_file:
 for idx, datum in enumerate(run_data):
     run_order[idx] = datum.split()
 
-for idx in run_order:
+for idx in tqdm(run_order):
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
     if f"5000_binning_flag.txt" in os.listdir(f"../bifrost_data/8/{seqid}/event_cl/"):
@@ -27,7 +28,7 @@ with open("../test/runlist_18.txt", 'r') as run_file:
 for idx, datum in enumerate(run_data):
     run_order[idx] = datum.split()
 
-for idx in run_order:
+for idx in tqdm(run_order):
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
     if f"5000_binning_flag.txt" in os.listdir(f"../bifrost_data/18/{seqid}/event_cl/"):
@@ -45,7 +46,7 @@ with open("../test/runlist_28.txt", 'r') as run_file:
 for idx, datum in enumerate(run_data):
     run_order[idx] = datum.split()
 
-for idx in run_order:
+for idx in tqdm(run_order):
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
     if f"5000_binning_flag.txt" in os.listdir(f"../bifrost_data/28/{seqid}/event_cl/"):
