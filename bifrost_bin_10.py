@@ -17,7 +17,7 @@ for idx in run_order:
             path = f"../bifrost_data/10/{seqid}/"
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
-            run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=10)
+            run_object = NuAnalysis(1000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=10)
             run_object.event_extraction()
 
 run_order = {}
@@ -35,7 +35,7 @@ for idx in run_order:
             path = f"../bifrost_data/20/{seqid}/"
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
-            run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=20)
+            run_object = NuAnalysis(1000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=20)
             run_object.event_extraction()
 
 run_order = {}
@@ -53,6 +53,6 @@ for idx in run_order:
             path = f"../bifrost_data/30/{seqid}/"
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
-            run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=30)
+            run_object = NuAnalysis(1000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=30)
             run_object.event_extraction()
 

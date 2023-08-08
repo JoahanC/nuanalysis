@@ -18,7 +18,7 @@ for idx in run_order:
             path = f"../bifrost_data/1/{seqid}/"
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
-            run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=1)
+            run_object = NuAnalysis(1000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=1)
             run_object.event_extraction()
 
 run_order = {}
@@ -36,7 +36,7 @@ for idx in run_order:
             path = f"../bifrost_data/11/{seqid}/"
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
-            run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=11)
+            run_object = NuAnalysis(1000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=11)
             run_object.event_extraction()
 
 run_order = {}
@@ -54,7 +54,7 @@ for idx in run_order:
             path = f"../bifrost_data/21/{seqid}/"
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
-            run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=21)
+            run_object = NuAnalysis(1000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=21)
             run_object.event_extraction()
 
 run_order = {}
@@ -72,5 +72,5 @@ for idx in run_order:
             path = f"../bifrost_data/31/{seqid}/"
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
-            run_object = NuAnalysis(5000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=31)
+            run_object = NuAnalysis(1000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=31)
             run_object.event_extraction()
