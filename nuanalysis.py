@@ -759,6 +759,21 @@ class NuAnalysis(Observation):
         for bound in self._phi_bounds:
             trimmed_all_info = self.detection_dir_processing(bound)
             if trimmed_all_info != None:
+
+                # Applying table corrections.
+                n_obj = len(trimmed_all_info["INDEX"])
+                trimmed_all_info["INDEX"] = list(range(1, n_obj + 1))
+                t_starts = [val[0].replace("nu", '') for val in trimmed_all_info["TIMES"]]
+                t_stops = [val[1] for val in trimmed_all_info["TIMES"]]
+                trimmed_all_info["TSTART"] = t_starts
+                trimmed_all_info["TSTOP"] = t_stops
+                count_vals = [counts.split('+/-')[0] for counts in trimmed_all_info["COUNTS"]]
+                count_err_vals = [counts.split('+/-')[1] for counts in trimmed_all_info["COUNTS"]]
+                trimmed_all_info["COUNTS"] = count_vals
+                trimmed_all_info["COUNTSERR"] = count_err_vals
+
+                del trimmed_all_info["TIMES"]
+                # Construct and write table
                 detect_table = Table()
                 for key in trimmed_all_info:
                     print(key, trimmed_all_info[key])
