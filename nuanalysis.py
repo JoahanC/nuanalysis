@@ -417,7 +417,6 @@ class NuAnalysis(Observation):
         """
         Performs the first round of detection redundancy culling on detections caught by the sliding cell algorithm
         """
-        print("Merging together results to find unique detections.")
         for bound in self.phi_bounds:
             det_files = glob.glob(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/*.det")
             file_strings = []
@@ -428,7 +427,8 @@ class NuAnalysis(Observation):
                 script_string += f" {file}"
             script_string += "\n"
             if len(file_strings) == 0:
-                print("No detections found!")
+                continue
+                #print("No detections found!")
             else:
                 with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/src_merge.xco", 'w') as script:
                     script.write(script_string)

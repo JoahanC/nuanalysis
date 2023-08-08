@@ -9,8 +9,8 @@ def generate_directory(path, overwrite=False):
     if os.path.isdir(path):
         if overwrite:
             clear_directory(path)
-        else:
-            print("Please enable overwriting to remove this directory!")
+        #else:
+        #    print("Please enable overwriting to remove this directory!")
     else:
         os.mkdir(path)
 
