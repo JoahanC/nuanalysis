@@ -763,7 +763,7 @@ class NuAnalysis(Observation):
                 # Applying table corrections.
                 n_obj = len(trimmed_all_info["INDEX"])
                 trimmed_all_info["INDEX"] = list(range(1, n_obj + 1))
-                t_starts = [val[0].replace("nu", '') for val in trimmed_all_info["TIMES"]]
+                t_starts = [val[0].replace("nu_", '') for val in trimmed_all_info["TIMES"]]
                 t_stops = [val[1] for val in trimmed_all_info["TIMES"]]
                 trimmed_all_info["TSTART"] = t_starts
                 trimmed_all_info["TSTOP"] = t_stops
