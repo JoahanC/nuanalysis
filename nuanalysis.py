@@ -708,7 +708,7 @@ class NuAnalysis(Observation):
             ra = detect_info["RA"][int(i) - 1]
             dec = detect_info["DEC"][int(i) - 1]
             c = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg))
-            if self._source_position.separation(c).arcsec > self.rlimit:
+            if self._source_position.separation(c).arcsec > 50:
                 for key in detect_info:
                     trimmed_detect_info[key].append(detect_info[key][int(i) - 1])
         return trimmed_detect_info
