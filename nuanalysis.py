@@ -757,7 +757,7 @@ class NuAnalysis(Observation):
         if trimmed_all_info != None:
 
             # Applying table corrections.
-            n_obj = len(trimmed_all_info["INDEX"])
+            n_obj = len(trimmed_all_info["RA"])
             trimmed_all_info["INDEX"] = list(range(1, n_obj + 1))
             t_starts = [val[0].replace("nu_", '') for val in trimmed_all_info["TIMES"]]
             t_stops = [val[1] for val in trimmed_all_info["TIMES"]]
