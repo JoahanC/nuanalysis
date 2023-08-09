@@ -754,7 +754,7 @@ class NuAnalysis(Observation):
 
     def write_net_detections(self):
         trimmed_all_info = self.verify_dual_detection()
-        if trimmed_all_info != None and len(trimmed_all_info) != 0:
+        if trimmed_all_info != None and "RA" in trimmed_all_info:
 
             # Applying table corrections.
             n_obj = len(trimmed_all_info["RA"])
