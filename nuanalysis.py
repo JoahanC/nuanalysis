@@ -412,8 +412,8 @@ class NuAnalysis(Observation):
                         script.write("exit")
                     subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
                     subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
-                    with open(self._evdir + f"{self._dtime}_flag.txt", 'w') as file:
-                        file.write("DONE")
+        with open(self._evdir + f"{self._dtime}_flag.txt", 'w') as file:
+            file.write("DONE")
 
     
     def detection_merging(self):
@@ -748,17 +748,13 @@ class NuAnalysis(Observation):
                         trimmed_all_info[key].append(all_detect_info[time][key][int(idx) - 1])
                     trimmed_all_info["TIMES"].append(time)
         
-        #for time in all_detect_info:
-        #    print(len(all_detect_info[time]["INDEX"]))
-
-        
         self._detections = trimmed_all_info
         return trimmed_all_info
     
 
     def write_net_detections(self):
         for bound in self._phi_bounds:
-            trimmed_all_info = self.detection_dir_processing(bound)
+            trimmed_all_info = self.verify_dual_detection(bound)
             if trimmed_all_info != None:
 
                 # Applying table corrections.
@@ -779,7 +775,7 @@ class NuAnalysis(Observation):
                 detect_table = Table()
                 for key in trimmed_all_info:
                     detect_table[key] = trimmed_all_info[key]
-                detect_table.write(self._refpath + f"detections/{self._dtime}.tbl", format='ipac', overwrite=True)
+                detect_table.write(self._refpath + f"detections/{self._dtime}_2.tbl", format='ipac', overwrite=True)
 
 
 
@@ -946,5 +942,140 @@ class NuAnalysis(Observation):
         """
         pass
 
-    
+
+    def verify_dual_detection(self):
+        """
+        Performs a dual instrument test on detections to further remove weak 
+        detections.
+        """
+
+        total_detections = {}
+        for bound in self._phi_bounds:
+            trimmed_all_info = self.detection_dir_processing(bound)
+            if trimmed_all_info != None:
+
+                # Applying table corrections.
+                
+                n_obj = len(trimmed_all_info["INDEX"])
+                trimmed_all_info["INDEX"] = list(range(1, n_obj + 1))
+                t_starts = [val[0].replace("nu_", '') for val in trimmed_all_info["TIMES"]]
+                print(trimmed_all_info)
+                t_stops = [val[1] for val in trimmed_all_info["TIMES"]]
+                trimmed_all_info["TSTART"] = t_starts
+                trimmed_all_info["TSTOP"] = t_stops
+                count_vals = [counts.split('+/-')[0] for counts in trimmed_all_info["COUNTS"]]
+                count_err_vals = [counts.split('+/-')[1] for counts in trimmed_all_info["COUNTS"]]
+                trimmed_all_info["COUNTS"] = count_vals
+                trimmed_all_info["COUNTSERR"] = count_err_vals
+                trimmed_all_info["SEQID"] = [self._seqid for i in range(n_obj)]
+                trimmed_all_info["BOUND"] = [f"{bound[0]}-{bound[1]}" for i in range(n_obj)]
+                    
+                del trimmed_all_info["TIMES"]
+                
+                for idx in range(len(trimmed_all_info["INDEX"])):
+                    flag = self.slide_cell_verification(trimmed_all_info["RA"][idx], 
+                                                        trimmed_all_info["DEC"][idx], 
+                                                        trimmed_all_info["TSTART"][idx], 
+                                                        trimmed_all_info["TSTOP"][idx],
+                                                        bound)
+                    if flag:
+                        values = []
+                        for key in trimmed_all_info:
+                            values.append(trimmed_all_info[key][idx])
+                        total_detections[len(total_detections)] = values
+        return total_detections
+
+
+    def slide_cell_verification(self, ra, dec, tstart, tstop, bounds):
+        
+        ## FPMA PASS
+        running_directory = self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/individual/"
+        generate_directory(running_directory, overwrite=False)
+        
+        # Generate the gti filtered files.        
+        with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
+            script.write(f'{self._sessionid}\n')
+            script.write(f"read events\n")
+            script.write(".\n")
+            script.write(f"nu{self._seqid}A01_cl.evt\n")
+            script.write('yes\n')
+            script.write("filter PHA_CUTOFF\n")
+            script.write(f"{bounds[0]}\n")
+            script.write(f"{bounds[1]}\n")
+            script.write("filter time scc\n")
+            script.write(f"{tstart} , {tstop}\n")
+            script.write("x\n")
+            script.write("extract events\n")
+            script.write("\n")
+            script.write(f"save events ./../detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/individual/nu_{tstart}-{tstop}A.evt\n")
+            script.write('no\n')
+            script.write("exit no\n")
+        subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
+        subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
+
+        # FPMB PASS
+        with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
+            script.write(f'{self._sessionid}\n')
+            script.write(f"read events\n")
+            script.write(".\n")
+            script.write(f"nu{self._seqid}B01_cl.evt\n")
+            script.write('yes\n')
+            script.write("filter PHA_CUTOFF\n")
+            script.write(f"{bounds[0]}\n")
+            script.write(f"{bounds[1]}\n")
+            script.write("filter time scc\n")
+            script.write(f"{tstart} , {tstop}\n")
+            script.write("x\n")
+            script.write("extract events\n")
+            script.write("\n")
+            script.write(f"save events ./../detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/individual/nu_{tstart}-{tstop}B.evt\n")
+            script.write('no\n')
+            script.write("exit no\n")
+        subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
+        subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
+
+        # Perform sliding cell detection
+        
+        for mod in self.modules:
+            with open(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/individual/ximage.xco", 'w') as script:
+                script.write(f"read/fits/size=800/nu_{tstart}-{tstop}{mod}.evt\n")
+                script.write(f"detect/snr={self._snr}/source_box_size=16/filedet=nu_{tstart}-{tstop}{mod}.det/fitsdet=nu_{tstart}-{tstop}{mod}.fits\n")
+                script.write("exit")
+            subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
+            subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
+        
+        """running_directory = self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}"
+        with open(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
+            script.write(f"read/fits/size=800/nu_{tstart}-{tstop}.evt\n")
+            script.write(f"detect/snr={self._snr}/source_box_size=32/filedet=test.det/fitsdet=test.fits\n")
+            script.write("exit")
+        subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory)
+        subprocess.run(["rm", "ximage.xco"], cwd=running_directory)"""
+        
+        # Verify dual plate authenticity
+        det_coords = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg))
+        
+        file_stub = self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/individual/nu_{tstart}-{tstop}"
+        det_files = glob.glob(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/individual/nu_{tstart}-{tstop}*.det")
+        passing_A = False
+        passing_B = False
+        for file in det_files:
+            with open(file) as detections:
+                for i in range(14):
+                    detections.readline()
+                for line in detections:
+                    line_info = line.split()
+                    ra = f"{line_info[5]} {line_info[6]} {line_info[7]}"
+                    dec = f"{line_info[8]} {line_info[9]} {line_info[10]}"
+                    test_coords = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg))
+                    if det_coords.separation(test_coords).arcsec < 25:
+                        letter = file.replace(file_stub, '').replace('.det', '')
+                        if letter == 'A':
+                            passing_A = True
+                        if letter == 'B':
+                            passing_B = True
+        if passing_A and passing_B:
+            return True 
+        else:
+            return False    
 
