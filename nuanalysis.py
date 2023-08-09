@@ -754,6 +754,7 @@ class NuAnalysis(Observation):
 
     def write_net_detections(self):
         trimmed_all_info = self.verify_dual_detection()
+        print(trimmed_all_info)
         if trimmed_all_info != None and "RA" in trimmed_all_info:
 
             # Applying table corrections.
@@ -958,7 +959,6 @@ class NuAnalysis(Observation):
                 n_obj = len(trimmed_all_info["INDEX"])
                 trimmed_all_info["INDEX"] = list(range(1, n_obj + 1))
                 t_starts = [val[0].replace("nu_", '') for val in trimmed_all_info["TIMES"]]
-                print(trimmed_all_info)
                 t_stops = [val[1] for val in trimmed_all_info["TIMES"]]
                 trimmed_all_info["TSTART"] = t_starts
                 trimmed_all_info["TSTOP"] = t_stops
