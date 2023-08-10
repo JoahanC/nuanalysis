@@ -14,6 +14,7 @@ from tqdm import tqdm
 import radial_profile
 from astropy.coordinates import SkyCoord
 from regions import CircleSkyRegion
+from astropy.wcs.utils import skycoord_to_pixel
 
 
 class NuAnalysis(Observation):
@@ -79,7 +80,7 @@ class NuAnalysis(Observation):
         hdu = fits.open(self._refpath + "science.fits", uint=True)[0]
         self.wcs = WCS(hdu.header)
         self.data = hdu.data
-        coordinates = self.wcs.skycoord_to_pixel(self._source_position)
+        coordinates = skycoord_to_pixel(self._source_position, self.wcs)
         #coordinates = radial_profile.find_source(self._refpath + "science.fits", show_image=False, filt_range=3)
         
         rind, rad_profile, radial_err, psf_profile = radial_profile.make_radial_profile(self._refpath + "science.fits", show_image=False,
