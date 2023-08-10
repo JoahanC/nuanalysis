@@ -74,8 +74,8 @@ class NuAnalysis(Observation):
             infiles = f"{self.science_files['A'][0].replace(self._refpath, '')} , {self.science_files['B'][0].replace(self._refpath, '')}"
             outfile = self._refpath + "science.fits"
             name, number = make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79, sessionid + 1000, evt_extract=True)
-            subprocess.run(["xselect", f"@{number}xsel.xco"])
-            subprocess.run(["rm", f"{number}xsel.xco"])
+            subprocess.run(["xselect", f"@{number}xsel.xco"], capture_output=True)
+            subprocess.run(["rm", f"{number}xsel.xco"], capture_output=True)
 
         hdu = fits.open(self._refpath + "science.fits", uint=True)[0]
         self.wcs = WCS(hdu.header)
@@ -438,6 +438,7 @@ class NuAnalysis(Observation):
         print('#' * 90)
         print(f"Performing Sliding Cell Source Detection Search for SEQID: {self._seqid}")
         print(f"Time scale: {self._dtime} seconds.")
+        print(f"Optimized Source Radius: {self.rlimit}")
         print('#' * 90)
 
         for bound in self._phi_bounds:
