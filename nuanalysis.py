@@ -81,10 +81,16 @@ class NuAnalysis(Observation):
         self.wcs = WCS(hdu.header)
         self.data = hdu.data
         self._pix_coordinates = [skycoord_to_pixel(self._source_position, self.wcs)]
-        #coordinates = radial_profile.find_source(self._refpath + "science.fits", show_image=False, filt_range=3)
+        im_coordinates = radial_profile.find_source(self._refpath + "science.fits", show_image=False, filt_range=3)
+        if len(im_coordinates) == 0:
+            im_coordinates = self._pix_coordinates
+        if im_coordinates != self._pix_coordinates:
+            sep = np.sqrt((self._pix_coordinates[0][0] - im_coordinates[0][0])**2 + (self._pix_coordinates[0][1] - im_coordinates[0][1])**2)
+            if sep < 20:
+                im_coordinates = self._pix_coordinates
         
         rind, rad_profile, radial_err, psf_profile = radial_profile.make_radial_profile(self._refpath + "science.fits", show_image=False,
-                                                                 coordinates = self._pix_coordinates)
+                                                                 coordinates = im_coordinates)
         self.rlimit = radial_profile.optimize_radius_snr(rind, rad_profile, radial_err, psf_profile, show=False)
         if self.rlimit == 0:
             self.rlimit += 100
