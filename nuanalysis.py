@@ -80,11 +80,11 @@ class NuAnalysis(Observation):
         hdu = fits.open(self._refpath + "science.fits", uint=True)[0]
         self.wcs = WCS(hdu.header)
         self.data = hdu.data
-        coordinates = [skycoord_to_pixel(self._source_position, self.wcs)]
+        self._pix_coordinates = [skycoord_to_pixel(self._source_position, self.wcs)]
         #coordinates = radial_profile.find_source(self._refpath + "science.fits", show_image=False, filt_range=3)
         
         rind, rad_profile, radial_err, psf_profile = radial_profile.make_radial_profile(self._refpath + "science.fits", show_image=False,
-                                                                 coordinates = coordinates)
+                                                                 coordinates = self._pix_coordinates)
         self.rlimit = radial_profile.optimize_radius_snr(rind, rad_profile, radial_err, psf_profile, show=False)
         if self.rlimit == 0:
             self.rlimit += 100
@@ -439,6 +439,7 @@ class NuAnalysis(Observation):
         print(f"Performing Sliding Cell Source Detection Search for SEQID: {self._seqid}")
         print(f"Time scale: {self._dtime} seconds.")
         print(f"Optimized Source Radius: {self.rlimit}")
+        print(f"Source Position: {self._pix_coordinates[0]}, {self._pix_coordinates[1]}")
         print('#' * 90)
 
         for bound in self._phi_bounds:
