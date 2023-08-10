@@ -82,9 +82,11 @@ class NuAnalysis(Observation):
         self.data = hdu.data
         self._pix_coordinates = [skycoord_to_pixel(self._source_position, self.wcs)]
         im_coordinates = radial_profile.find_source(self._refpath + "science.fits", show_image=False, filt_range=3)
+        same = False
         if len(im_coordinates) == 0:
             im_coordinates = self._pix_coordinates
-        if im_coordinates != self._pix_coordinates:
+            same = True
+        if not same:
             sep = np.sqrt((self._pix_coordinates[0][0] - im_coordinates[0][0])**2 + (self._pix_coordinates[0][1] - im_coordinates[0][1])**2)
             if sep < 20:
                 im_coordinates = self._pix_coordinates
