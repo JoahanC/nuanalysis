@@ -80,7 +80,7 @@ class NuAnalysis(Observation):
         hdu = fits.open(self._refpath + "science.fits", uint=True)[0]
         self.wcs = WCS(hdu.header)
         self.data = hdu.data
-        coordinates = skycoord_to_pixel(self._source_position, self.wcs)
+        coordinates = [skycoord_to_pixel(self._source_position, self.wcs)]
         #coordinates = radial_profile.find_source(self._refpath + "science.fits", show_image=False, filt_range=3)
         
         rind, rad_profile, radial_err, psf_profile = radial_profile.make_radial_profile(self._refpath + "science.fits", show_image=False,
