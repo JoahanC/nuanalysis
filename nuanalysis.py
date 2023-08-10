@@ -439,7 +439,7 @@ class NuAnalysis(Observation):
         print(f"Performing Sliding Cell Source Detection Search for SEQID: {self._seqid}")
         print(f"Time scale: {self._dtime} seconds.")
         print(f"Optimized Source Radius: {self.rlimit}")
-        print(f"Source Position: {self._pix_coordinates[0]}, {self._pix_coordinates[1]}")
+        print(f"Source Position: {self._pix_coordinates[0][0]}, {self._pix_coordinates[0][1]}")
         print('#' * 90)
 
         for bound in self._phi_bounds:
