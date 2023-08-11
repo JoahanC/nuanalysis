@@ -722,6 +722,7 @@ class NuAnalysis(Observation):
             trimmed_all_info = self.detection_dir_processing(bound)
             if trimmed_all_info != None:
                 n_obj = len(trimmed_all_info["INDEX"])
+                print(n_obj)
                 if n_obj > 5:
                     return None
 
