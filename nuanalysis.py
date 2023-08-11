@@ -469,7 +469,7 @@ class NuAnalysis(Observation):
                 if len(fits.getdata(running_directory + file)) != 0:
                     with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
                         script.write(f"read/fits/size=800/{file}\n")
-                        script.write(f"detect/snr={self._snr}/source_box_size=32/filedet={file.replace('.evt', '')}.det/fitsdet={file.replace('.evt', '')}.fits\n")
+                        script.write(f"detect/snr={self._snr}/source_box_size=12/filedet={file.replace('.evt', '')}.det/fitsdet={file.replace('.evt', '')}.fits\n")
                         script.write("exit")
                     subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
                     subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
@@ -719,7 +719,6 @@ class NuAnalysis(Observation):
             for det in range(len(reduced_detections)):
                 for idx in range(len(tkeys)):
                     trimmed_all_info[tkeys[idx]].append(reduced_detections[det][idx])
-            print(trimmed_all_info)
 
 
 
@@ -921,6 +920,8 @@ class NuAnalysis(Observation):
             trimmed_all_info = self.detection_dir_processing(bound)
             if trimmed_all_info != None:
                 tkeys = list(trimmed_all_info.keys())
+                tkeys.append('ACOUNTS')
+                tkeys.append('BCOUNTS')
                 # Applying table corrections.
                 
                 n_obj = len(trimmed_all_info["INDEX"])
@@ -947,8 +948,8 @@ class NuAnalysis(Observation):
                 del trimmed_all_info["TIMES"]
                 
                 for idx in range(len(trimmed_all_info["INDEX"])):
-                    flag = self.slide_cell_verification(trimmed_all_info["RA"][idx], 
-                                                        trimmed_all_info["DEC"][idx], 
+                    flag, counts_A, counts_B = self.slide_cell_verification(trimmed_all_info["XPIX"][idx], 
+                                                        trimmed_all_info["YPIX"][idx], 
                                                         trimmed_all_info["TSTART"][idx], 
                                                         trimmed_all_info["TSTOP"][idx],
                                                         bound)
@@ -956,12 +957,14 @@ class NuAnalysis(Observation):
                         values = []
                         for key in trimmed_all_info:
                             values.append(trimmed_all_info[key][idx])
+                        values.append(counts_A)
+                        values.append(counts_B)
                         total_detections[len(total_detections)] = values
                     
         return total_detections, tkeys
 
 
-    def slide_cell_verification(self, ra, dec, tstart, tstop, bounds):
+    def slide_cell_verification(self, det_xpix, det_ypix, tstart, tstop, bounds):
         
         ## FPMA PASS
         running_directory = self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/individual/"
@@ -1015,22 +1018,26 @@ class NuAnalysis(Observation):
         det_files = glob.glob(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/individual/nu_{tstart}-{tstop}*.evt")
         passing_A = False
         passing_B = False
+        counts_A = 0
+        counts_B = 0
         for file in det_files:
             counts = 0
             data_events = fits.getdata(file)
             for event in data_events:
                 xpix = event[13]
                 ypix = event[14]
-                if np.sqrt((xpix - self._im_coordinates[0][0])**2 + (ypix - self._im_coordinates[0][1])**2) < self.rlimit / 2.5:
+                if np.sqrt((float(xpix) - float(det_xpix))**2 + (float(ypix) - float(det_ypix))**2) < self.rlimit / 2.5:
                     counts += 1
             if counts > 0:
                 letter = file.replace(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/individual/nu_{tstart}-{tstop}", '').replace(".evt", '')
                 if letter == 'A':
                     passing_A = True
+                    counts_A = counts
                 if letter == 'B':
                     passing_B = True
+                    counts_B = counts
         if passing_A and passing_B:
-            return True 
+            return True, counts_A, counts_B
         else:
-            return False    
+            return False, counts_A, counts_B    
 
