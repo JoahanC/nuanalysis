@@ -1,7 +1,6 @@
 import os
 import subprocess
 import glob
-import random
 import numpy as np
 import matplotlib.pyplot as plt
 from nustar import *
@@ -9,12 +8,12 @@ from helpers import *
 from astropy.io import fits
 from astropy import units as u
 from astropy.wcs import WCS
-from astropy.table import QTable, Table, Column
+from astropy.table import Table
 from tqdm import tqdm
 import radial_profile
 from astropy.coordinates import SkyCoord
 from regions import CircleSkyRegion
-from astropy.wcs.utils import skycoord_to_pixel
+from astropy.wcs.utils import skycoord_to_pixel, pixel_to_skycoord
 
 
 class NuAnalysis(Observation):
@@ -81,7 +80,7 @@ class NuAnalysis(Observation):
         self.wcs = WCS(hdu.header)
         self.data = hdu.data
         self._pix_coordinates = [skycoord_to_pixel(self._source_position, self.wcs)]
-        im_coordinates = radial_profile.find_source(self._refpath + "science.fits", show_image=False, filt_range=3)
+        """im_coordinates = radial_profile.find_source(self._refpath + "science.fits", show_image=False, filt_range=3)
         same = False
         if len(im_coordinates) == 0:
             im_coordinates = self._pix_coordinates
@@ -89,14 +88,18 @@ class NuAnalysis(Observation):
         if not same:
             sep = np.sqrt((self._pix_coordinates[0][0] - im_coordinates[0][0])**2 + (self._pix_coordinates[0][1] - im_coordinates[0][1])**2)
             if sep < 20:
-                im_coordinates = self._pix_coordinates
+                im_coordinates = self._pix_coordinates"""
         
+        #self._im_coordinates = im_coordinates
+        self._im_coordinates = self._pix_coordinates
+        im_coordinates = self._pix_coordinates
+        self._im_skycoord = pixel_to_skycoord(im_coordinates[0][0], im_coordinates[0][1], self.wcs)
         rind, rad_profile, radial_err, psf_profile = radial_profile.make_radial_profile(self._refpath + "science.fits", show_image=False,
                                                                  coordinates = im_coordinates)
         self.rlimit = radial_profile.optimize_radius_snr(rind, rad_profile, radial_err, psf_profile, show=False)
         if self.rlimit == 0:
             self.rlimit += 100
-        self.rlimit += 50
+        self.rlimit += 100
         self._time_bins = self.generate_timebins()
         self._detections = None
 
@@ -152,8 +155,8 @@ class NuAnalysis(Observation):
         ax = plt.subplot(projection=self.wcs)
         im = ax.imshow(self.data, origin='lower')
         
-        object_coords = SkyCoord(self.coords[0], self.coords[1], unit='deg', frame='fk5')
-        object_region = CircleSkyRegion(center=object_coords, radius=50*u.arcsecond)
+        #object_coords = SkyCoord(self.coords[0], self.coords[1], unit='deg', frame='fk5')
+        object_region = CircleSkyRegion(center=self._source_position, radius=50*u.arcsecond)
         plot_region = object_region.to_pixel(self.wcs)
         plot_region.plot(ax=ax, color="green")
 
@@ -168,6 +171,16 @@ class NuAnalysis(Observation):
         if display:
             plt.show()
 
+
+    def read_final_detections(self):
+
+        if f"{self._dtime}_2.tbl" not in os.listdir(self._refpath + "detections/"):
+            print("No final detections found!")
+            return None, False
+        
+        detect_info = Table.read(self._refpath + f"detections/{self._dtime}_2.tbl", format='ipac')
+        return detect_info, True
+
     
     def display_detections(self, savefig=False, display=True):
         """
@@ -175,26 +188,23 @@ class NuAnalysis(Observation):
         source labeled with a circular region and all observations for this specific 
         observation labeled.
         """
-
+        print(self.wcs)
         ax = plt.subplot(projection=self.wcs)
         im = ax.imshow(self.data, origin='lower')
-        object_coords = SkyCoord(self.coords[0], self.coords[1], unit='deg', frame='fk5')
-        object_region = CircleSkyRegion(center=object_coords, radius=50*u.arcsecond)
+        #object_coords = SkyCoord(self.coords[0], self.coords[1], unit='deg', frame='fk5')
+        object_region = CircleSkyRegion(center=self._source_position, radius=self.rlimit*u.arcsecond)
         plot_region = object_region.to_pixel(self.wcs)
         plot_region.plot(ax=ax, color="yellow")
 
         # Loop through detections and plot
-        for bound in self.phi_bounds:
-            detections = self.detection_dir_processing(bound)
-            if detections == None:
-                continue
-            if detections != None:
-                for idx in range(len(detections["RA"])):
-                    ra, dec = self.ra_dec_todeg(detections["RA"][idx], detections["DEC"][idx])
-                    detect_coord = SkyCoord(ra, dec, unit='deg', frame='fk5')
-                    detect_circle = CircleSkyRegion(center=detect_coord, radius=5*u.arcsecond)
-                    detect_region = detect_circle.to_pixel(self.wcs)
-                    detect_region.plot(ax=ax, color="white")                
+        detections, flag = self.read_final_detections()
+        if flag:
+            for idx in range(len(detections["RA"])):
+                ra, dec = self.ra_dec_todeg(detections["RA"][idx], detections["DEC"][idx])
+                detect_coord = SkyCoord(ra, dec, unit='deg', frame='fk5')
+                detect_circle = CircleSkyRegion(center=detect_coord, radius=5*u.arcsecond)
+                detect_region = detect_circle.to_pixel(self.wcs)
+                detect_region.plot(ax=ax, color="white")                
         
         ax.get_coords_overlay(self.wcs)
         plt.colorbar(im)
@@ -655,7 +665,7 @@ class NuAnalysis(Observation):
             ra = detect_info["RA"][int(i) - 1]
             dec = detect_info["DEC"][int(i) - 1]
             detect_position = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg), frame='fk5')
-            if self._source_position.separation(detect_position).arcsec > 50:
+            if self._source_position.separation(detect_position).arcsec > self.rlimit:
                 for key in detect_info:
                     trimmed_detect_info[key].append(detect_info[key][int(i) - 1])
         return trimmed_detect_info
@@ -696,9 +706,23 @@ class NuAnalysis(Observation):
     
 
     def write_net_detections(self):
-        trimmed_all_info = self.verify_dual_detection()
-        print(trimmed_all_info)
-        if trimmed_all_info != None and "RA" in trimmed_all_info:
+        reduced_detections, tkeys = self.verify_dual_detection()
+        trimmed_all_info = {}
+        if reduced_detections != None and tkeys != None:
+            for key in tkeys:
+                trimmed_all_info[key] = []
+            key_map = {}
+            for idx in range(len(tkeys)):
+                key_map[idx] = tkeys[idx]
+            for idx in range(len(tkeys)):
+                trimmed_all_info[tkeys[idx]] = []
+            for det in range(len(reduced_detections)):
+                for idx in range(len(tkeys)):
+                    trimmed_all_info[tkeys[idx]].append(reduced_detections[det][idx])
+            print(trimmed_all_info)
+
+
+
 
             # Applying table corrections.
             n_obj = len(trimmed_all_info["RA"])
@@ -708,9 +732,9 @@ class NuAnalysis(Observation):
             trimmed_all_info["TSTART"] = t_starts
             trimmed_all_info["TSTOP"] = t_stops
             count_vals = [counts.split('+/-')[0] for counts in trimmed_all_info["COUNTS"]]
-            count_err_vals = [counts.split('+/-')[1] for counts in trimmed_all_info["COUNTS"]]
+            #count_err_vals = [counts.split('+/-')[1] for counts in trimmed_all_info["COUNTS"]]
             trimmed_all_info["COUNTS"] = count_vals
-            trimmed_all_info["COUNTSERR"] = count_err_vals
+            #trimmed_all_info["COUNTSERR"] = count_err_vals
             trimmed_all_info["SEQID"] = [self._seqid for i in range(n_obj)]
 
             del trimmed_all_info["TIMES"]
@@ -723,7 +747,6 @@ class NuAnalysis(Observation):
 
 
     def nuproducts(self, detect_info, pi_bounds):
-        print('here')
         if detect_info == None:
             print("Oh no! No detections!")
             return None
@@ -893,10 +916,11 @@ class NuAnalysis(Observation):
         """
 
         total_detections = {}
+        tkeys = None 
         for bound in self._phi_bounds:
             trimmed_all_info = self.detection_dir_processing(bound)
             if trimmed_all_info != None:
-
+                tkeys = list(trimmed_all_info.keys())
                 # Applying table corrections.
                 
                 n_obj = len(trimmed_all_info["INDEX"])
@@ -911,6 +935,14 @@ class NuAnalysis(Observation):
                 trimmed_all_info["COUNTSERR"] = count_err_vals
                 trimmed_all_info["SEQID"] = [self._seqid for i in range(n_obj)]
                 trimmed_all_info["BOUND"] = [f"{bound[0]}-{bound[1]}" for i in range(n_obj)]
+
+                seps = []
+                for i in range(len(trimmed_all_info["INDEX"])):
+                    ra = trimmed_all_info['RA'][i]
+                    dec = trimmed_all_info['DEC'][i]
+                    detect_position = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg), frame='fk5')
+                    seps.append(self._source_position.separation(detect_position).arcsec)
+                trimmed_all_info["SEP"] = np.array(seps)
                     
                 del trimmed_all_info["TIMES"]
                 
@@ -925,7 +957,8 @@ class NuAnalysis(Observation):
                         for key in trimmed_all_info:
                             values.append(trimmed_all_info[key][idx])
                         total_detections[len(total_detections)] = values
-        return total_detections
+                    
+        return total_detections, tkeys
 
 
     def slide_cell_verification(self, ra, dec, tstart, tstop, bounds):
@@ -977,45 +1010,25 @@ class NuAnalysis(Observation):
         subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
 
         # Perform sliding cell detection
-        
-        for mod in self.modules:
-            with open(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/individual/ximage.xco", 'w') as script:
-                script.write(f"read/fits/size=800/nu_{tstart}-{tstop}{mod}.evt\n")
-                script.write(f"detect/snr={self._snr}/source_box_size=16/filedet=nu_{tstart}-{tstop}{mod}.det/fitsdet=nu_{tstart}-{tstop}{mod}.fits\n")
-                script.write("exit")
-            subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
-            subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
-        
-        """running_directory = self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}"
-        with open(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
-            script.write(f"read/fits/size=800/nu_{tstart}-{tstop}.evt\n")
-            script.write(f"detect/snr={self._snr}/source_box_size=32/filedet=test.det/fitsdet=test.fits\n")
-            script.write("exit")
-        subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory)
-        subprocess.run(["rm", "ximage.xco"], cwd=running_directory)"""
-        
-        # Verify dual plate authenticity
-        det_coords = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg))
-        
+                
         file_stub = self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/individual/nu_{tstart}-{tstop}"
-        det_files = glob.glob(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/individual/nu_{tstart}-{tstop}*.det")
+        det_files = glob.glob(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/individual/nu_{tstart}-{tstop}*.evt")
         passing_A = False
         passing_B = False
         for file in det_files:
-            with open(file) as detections:
-                for i in range(14):
-                    detections.readline()
-                for line in detections:
-                    line_info = line.split()
-                    ra = f"{line_info[5]} {line_info[6]} {line_info[7]}"
-                    dec = f"{line_info[8]} {line_info[9]} {line_info[10]}"
-                    test_coords = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg))
-                    if det_coords.separation(test_coords).arcsec < 25:
-                        letter = file.replace(file_stub, '').replace('.det', '')
-                        if letter == 'A':
-                            passing_A = True
-                        if letter == 'B':
-                            passing_B = True
+            counts = 0
+            data_events = fits.getdata(file)
+            for event in data_events:
+                xpix = event[13]
+                ypix = event[14]
+                if np.sqrt((xpix - self._im_coordinates[0][0])**2 + (ypix - self._im_coordinates[0][1])**2) < self.rlimit / 2.5:
+                    counts += 1
+            if counts > 0:
+                letter = file.replace(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/individual/nu_{tstart}-{tstop}", '').replace(".evt", '')
+                if letter == 'A':
+                    passing_A = True
+                if letter == 'B':
+                    passing_B = True
         if passing_A and passing_B:
             return True 
         else:
