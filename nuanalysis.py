@@ -2,6 +2,7 @@ import os
 import subprocess
 import glob
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from nustar import *
 from helpers import *
@@ -153,18 +154,17 @@ class NuAnalysis(Observation):
         """
         
         ax = plt.subplot(projection=self.wcs)
-        im = ax.imshow(self.data, origin='lower')
-        
-        #object_coords = SkyCoord(self.coords[0], self.coords[1], unit='deg', frame='fk5')
-        object_region = CircleSkyRegion(center=self._source_position, radius=50*u.arcsecond)
+        im = ax.imshow(self.data, origin='lower', norm=matplotlib.colors.LogNorm())
+        object_region = CircleSkyRegion(center=self._source_position, radius=self.rlimit*u.arcsecond)
         plot_region = object_region.to_pixel(self.wcs)
-        plot_region.plot(ax=ax, color="green")
+        plot_region.plot(ax=ax, color="yellow")
 
-        ax.get_coords_overlay()
-        plt.colorbar(im)
+        #ax.get_coords_overlay()
         plt.grid(True)
-        plt.xlabel('')
-        plt.ylabel('')
+        plt.xlabel('RA')
+        plt.ylabel('DEC')
+        plt.xlim(250, 750)
+        plt.ylim(250, 750)
 
         if savefig:
             plt.savefig("stacked_full.pdf", dpi=1000)
@@ -188,34 +188,45 @@ class NuAnalysis(Observation):
         source labeled with a circular region and all observations for this specific 
         observation labeled.
         """
-        print(self.wcs)
-        ax = plt.subplot(projection=self.wcs)
-        im = ax.imshow(self.data, origin='lower')
-        #object_coords = SkyCoord(self.coords[0], self.coords[1], unit='deg', frame='fk5')
-        object_region = CircleSkyRegion(center=self._source_position, radius=self.rlimit*u.arcsecond)
-        plot_region = object_region.to_pixel(self.wcs)
-        plot_region.plot(ax=ax, color="yellow")
-
-        # Loop through detections and plot
-        detections, flag = self.read_final_detections()
-        if flag:
-            for idx in range(len(detections["RA"])):
-                ra, dec = self.ra_dec_todeg(detections["RA"][idx], detections["DEC"][idx])
-                detect_coord = SkyCoord(ra, dec, unit='deg', frame='fk5')
-                detect_circle = CircleSkyRegion(center=detect_coord, radius=5*u.arcsecond)
-                detect_region = detect_circle.to_pixel(self.wcs)
-                detect_region.plot(ax=ax, color="white")                
         
-        ax.get_coords_overlay(self.wcs)
-        plt.colorbar(im)
-        plt.grid(True)
-        plt.xlabel('')
-        plt.ylabel('')
+        detections, flag = self.read_final_detections()
+        if len(detections["INDEX"]) == 0:
+            self.display_image()
+        else:
+            print(detections)
+            ax = plt.subplot(projection=self.wcs)
+            im = ax.imshow(self.data, origin='lower', norm=matplotlib.colors.LogNorm())
+            object_region = CircleSkyRegion(center=self._source_position, radius=self.rlimit*u.arcsecond)
+            plot_region = object_region.to_pixel(self.wcs)
+            plot_region.plot(ax=ax, color="yellow")
 
-        if savefig:
-            plt.savefig("stacked_full.pdf", dpi=1000)
-        if display:
-            plt.show()
+            # Loop through detections and plot
+            
+            x_pix = detections['XPIX']
+            x_pi = [float(pix) for pix in x_pix]
+            y_pix = detections['YPIX']
+            y_pi = [float(pix) for pix in y_pix]
+            probs = np.array(detections['PROB'])
+            probs_pi = [float(prob) for prob in probs]
+            print(probs_pi)
+
+            ploty = ax.scatter(x_pi, y_pi, c=probs_pi, s=20, linewidths=1, edgecolors= "black", cmap='spring', norm=matplotlib.colors.LogNorm())               
+            
+            #ax.get_coords_overlay(self.wcs)
+            plt.colorbar(ploty)
+            plt.grid(True)
+            plt.xlabel('RA')
+            plt.ylabel('DEC')
+            plt.xlim(250, 750)
+            plt.ylim(250, 750)
+            
+
+            if savefig:
+                plt.savefig("stacked_full.pdf", dpi=1000)
+            if display:
+                plt.show()
+        
+        
 
 
     def read_in_phi_bounds(self, pilow_file, pihi_file):
@@ -706,6 +717,14 @@ class NuAnalysis(Observation):
     
 
     def write_net_detections(self):
+
+        for bound in self._phi_bounds:
+            trimmed_all_info = self.detection_dir_processing(bound)
+            if trimmed_all_info != None:
+                n_obj = len(trimmed_all_info["INDEX"])
+                if n_obj > 5:
+                    return None
+
         reduced_detections, tkeys = self.verify_dual_detection()
         trimmed_all_info = {}
         if reduced_detections != None and tkeys != None:
@@ -720,23 +739,11 @@ class NuAnalysis(Observation):
                 for idx in range(len(tkeys)):
                     trimmed_all_info[tkeys[idx]].append(reduced_detections[det][idx])
 
-
-
-
             # Applying table corrections.
             n_obj = len(trimmed_all_info["RA"])
             trimmed_all_info["INDEX"] = list(range(1, n_obj + 1))
-            t_starts = [val[0].replace("nu_", '') for val in trimmed_all_info["TIMES"]]
-            t_stops = [val[1] for val in trimmed_all_info["TIMES"]]
-            trimmed_all_info["TSTART"] = t_starts
-            trimmed_all_info["TSTOP"] = t_stops
-            count_vals = [counts.split('+/-')[0] for counts in trimmed_all_info["COUNTS"]]
-            #count_err_vals = [counts.split('+/-')[1] for counts in trimmed_all_info["COUNTS"]]
-            trimmed_all_info["COUNTS"] = count_vals
-            #trimmed_all_info["COUNTSERR"] = count_err_vals
-            trimmed_all_info["SEQID"] = [self._seqid for i in range(n_obj)]
-
-            del trimmed_all_info["TIMES"]
+            
+            
             # Construct and write table
             detect_table = Table()
             for key in trimmed_all_info:
@@ -813,7 +820,7 @@ class NuAnalysis(Observation):
         return all_files
 
 
-    def acquire_lightcurve(self, fits_file):
+    def acquire_lightcurve(self, tstart, tstop, xpix, ypix):
         """
         Returns a dictionary containing the background-subtracted lightcurve data.
 
@@ -829,17 +836,36 @@ class NuAnalysis(Observation):
         ------
         """
 
-        lc_data = {}
-        lc_data["TIME"] = []
-        lc_data["RATE"] = []
-        lc_data["RATEERR"] = []
-        with fits.open(fits_file) as hdul:
-            fits_data = hdul[1].data
-        for datum in fits_data:
-            lc_data["TIME"].append(datum[0])
-            lc_data["RATE"].append(datum[2])
-            lc_data["RATEERR"].append(datum[3])
-        return lc_data
+        tot_data = fits.getdata(self._refpath + "science.evt")
+        events = []
+        times = []
+        for datum in tot_data:
+            if float(datum[0]) > float(tstart) and float(datum[0]) < float(tstop):
+                datum_xpix = datum[13]
+                datum_ypix = datum[14]
+                if np.sqrt((float(xpix) - float(datum_xpix))**2 + (float(ypix) - float(datum_ypix))**2) < self.rlimit / 2.5:
+                    events.append(datum)
+                    times.append(float(datum[0]))
+        lc_bins = np.arange(float(tstart), float(tstop), 100)
+        lc, bines = np.histogram(times, lc_bins)
+        t = []
+        for idx, l in enumerate(lc):
+            t.append(idx)
+        t = np.array(t) * 10
+        plt.plot(t, lc, ms= 1)
+        plt.show()
+
+    
+    def acquire_event_curves(self):
+        detections, flag = self.read_final_detections()
+        if len(detections["INDEX"]) != 0:
+            for idx in range(len(detections['INDEX'])):
+                xpix = detections['XPIX'][idx]
+                ypix = detections['YPIX'][idx]
+                tstart = detections['TSTART'][idx]
+                tstop = detections['TSTOP'][idx]
+                print(detections['ACOUNTS'][idx], detections['BCOUNTS'][idx])
+                self.acquire_lightcurve(tstart, tstop, xpix, ypix)
 
 
     def acquire_pha(self, pilow, pihi, n):
@@ -919,9 +945,8 @@ class NuAnalysis(Observation):
         for bound in self._phi_bounds:
             trimmed_all_info = self.detection_dir_processing(bound)
             if trimmed_all_info != None:
-                tkeys = list(trimmed_all_info.keys())
-                tkeys.append('ACOUNTS')
-                tkeys.append('BCOUNTS')
+                
+                
                 # Applying table corrections.
                 
                 n_obj = len(trimmed_all_info["INDEX"])
@@ -936,7 +961,8 @@ class NuAnalysis(Observation):
                 trimmed_all_info["COUNTSERR"] = count_err_vals
                 trimmed_all_info["SEQID"] = [self._seqid for i in range(n_obj)]
                 trimmed_all_info["BOUND"] = [f"{bound[0]}-{bound[1]}" for i in range(n_obj)]
-
+                del trimmed_all_info["TIMES"]
+                
                 seps = []
                 for i in range(len(trimmed_all_info["INDEX"])):
                     ra = trimmed_all_info['RA'][i]
@@ -944,8 +970,15 @@ class NuAnalysis(Observation):
                     detect_position = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg), frame='fk5')
                     seps.append(self._source_position.separation(detect_position).arcsec)
                 trimmed_all_info["SEP"] = np.array(seps)
+                #tkeys = list(trimmed_all_info.keys()) 
+                tkeys = []
+                for key in trimmed_all_info:
+                    tkeys.append(key)
+                tkeys.append('ACOUNTS')
+                tkeys.append('BCOUNTS')
+                #print(trimmed_all_info)
                     
-                del trimmed_all_info["TIMES"]
+                
                 
                 for idx in range(len(trimmed_all_info["INDEX"])):
                     flag, counts_A, counts_B = self.slide_cell_verification(trimmed_all_info["XPIX"][idx], 
