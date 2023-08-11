@@ -210,7 +210,7 @@ class NuAnalysis(Observation):
             probs_pi = [float(prob) for prob in probs]
             print(probs_pi)
 
-            ploty = ax.scatter(x_pi, y_pi, c=probs_pi, s=20, linewidths=1, edgecolors= "black", cmap='spring', norm=matplotlib.colors.LogNorm())               
+            ploty = ax.scatter(x_pi, y_pi, marker="d", c=probs_pi, s=40, linewidths=1, edgecolors= "black", cmap='spring', norm=matplotlib.colors.LogNorm())               
             
             #ax.get_coords_overlay(self.wcs)
             plt.colorbar(ploty)
@@ -222,7 +222,7 @@ class NuAnalysis(Observation):
             
 
             if savefig:
-                plt.savefig("stacked_full.pdf", dpi=1000)
+                plt.savefig(self._refpath + f"products/stacked_full.pdf", dpi=1000)
             if display:
                 plt.show()
         
@@ -821,7 +821,7 @@ class NuAnalysis(Observation):
         return all_files
 
 
-    def acquire_lightcurve(self, tstart, tstop, xpix, ypix):
+    def acquire_lightcurve(self, ids, tstart, tstop, xpix, ypix):
         """
         Returns a dictionary containing the background-subtracted lightcurve data.
 
@@ -847,26 +847,58 @@ class NuAnalysis(Observation):
                 if np.sqrt((float(xpix) - float(datum_xpix))**2 + (float(ypix) - float(datum_ypix))**2) < self.rlimit / 2.5:
                     events.append(datum)
                     times.append(float(datum[0]))
-        lc_bins = np.arange(float(tstart), float(tstop), 100)
+        """lc_bins = np.arange(float(tstart), float(tstop), 5)
         lc, bines = np.histogram(times, lc_bins)
         t = []
         for idx, l in enumerate(lc):
             t.append(idx)
         t = np.array(t) * 10
         plt.plot(t, lc, ms= 1)
-        plt.show()
+        plt.savefig(self._refpath + f"products/{ids}lc_5.pdf")
+        plt.close()
+
+        lc_bins = np.arange(float(tstart), float(tstop), 10)
+        lc, bines = np.histogram(times, lc_bins)
+        t = []
+        for idx, l in enumerate(lc):
+            t.append(idx)
+        t = np.array(t) * 10
+        plt.plot(t, lc, ms= 1)
+        plt.savefig(self._refpath + f"products/{ids}_10lc.pdf")
+        plt.close()"""
+
+        lc_bins = np.arange(float(tstart), float(tstop), 20)
+        lc, bines = np.histogram(times, lc_bins)
+        t = []
+        for idx, l in enumerate(lc):
+            t.append(idx)
+        t = np.array(t) * 10
+        plt.plot(t, lc, ms= 1)
+        plt.savefig(self._refpath + f"products/{ids}_20lc.pdf")
+        plt.close()
+
+        lc_bins = np.arange(float(tstart), float(tstop), 50)
+        lc, bines = np.histogram(times, lc_bins)
+        t = []
+        for idx, l in enumerate(lc):
+            t.append(idx)
+        t = np.array(t) * 10
+        plt.plot(t, lc, ms= 1)
+        plt.savefig(self._refpath + f"products/{ids}_50lc.pdf")
+        plt.close()
 
     
     def acquire_event_curves(self):
         detections, flag = self.read_final_detections()
         if len(detections["INDEX"]) != 0:
             for idx in range(len(detections['INDEX'])):
+                ids = detections['INDEX'][idx]
                 xpix = detections['XPIX'][idx]
                 ypix = detections['YPIX'][idx]
                 tstart = detections['TSTART'][idx]
                 tstop = detections['TSTOP'][idx]
                 print(detections['ACOUNTS'][idx], detections['BCOUNTS'][idx])
-                self.acquire_lightcurve(tstart, tstop, xpix, ypix)
+                self.acquire_lightcurve(ids, tstart, tstop, xpix, ypix)
 
 
     def acquire_pha(self, pilow, pihi, n):
@@ -956,8 +988,8 @@ class NuAnalysis(Observation):
                 t_stops = [val[1] for val in trimmed_all_info["TIMES"]]
                 trimmed_all_info["TSTART"] = t_starts
                 trimmed_all_info["TSTOP"] = t_stops
-                count_vals = [counts.split('+/-')[0] for counts in trimmed_all_info["COUNTS"]]
-                count_err_vals = [counts.split('+/-')[1] for counts in trimmed_all_info["COUNTS"]]
+                count_vals = [float(counts.split('+/-')[0]) for counts in trimmed_all_info["COUNTS"]]
+                count_err_vals = [float(counts.split('+/-')[1]) for counts in trimmed_all_info["COUNTS"]]
                 trimmed_all_info["COUNTS"] = count_vals
                 trimmed_all_info["COUNTSERR"] = count_err_vals
                 trimmed_all_info["SEQID"] = [self._seqid for i in range(n_obj)]
