@@ -65,6 +65,7 @@ class NuAnalysis(Observation):
                 self._clean = True
         
         super().__init__(path, seqid, evdir, out_path)
+        self.stack_images()
         
         self._im_coordinates = self._pix_coordinates
         im_coordinates = self._pix_coordinates
