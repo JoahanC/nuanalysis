@@ -81,6 +81,7 @@ class NuAnalysis(Observation):
         self.wcs = WCS(hdu.header)
         self.data = hdu.data
         self._pix_coordinates = [skycoord_to_pixel(self._source_position, self.wcs)]
+        self.cuts = self.exposure['A01'] / self._dtime
         """im_coordinates = radial_profile.find_source(self._refpath + "science.fits", show_image=False, filt_range=3)
         same = False
         if len(im_coordinates) == 0:
@@ -179,7 +180,10 @@ class NuAnalysis(Observation):
             return None, False
         
         detect_info = Table.read(self._refpath + f"detections/{self._dtime}_2.tbl", format='ipac')
-        return detect_info, True
+        if len(detect_info['INDEX']) == 0:
+            return detect_info, False
+        else:
+            return detect_info, True
 
     
     def display_detections(self, savefig=False, display=True):
@@ -482,8 +486,8 @@ class NuAnalysis(Observation):
                         script.write(f"read/fits/size=800/{file}\n")
                         script.write(f"detect/snr={self._snr}/source_box_size=12/filedet={file.replace('.evt', '')}.det/fitsdet={file.replace('.evt', '')}.fits\n")
                         script.write("exit")
-                    subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory, capture_output=True)
-                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory, capture_output=True)
+                    subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory)#, capture_output=True)
+                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory)#, capture_output=True)
         with open(self._evdir + f"{self._dtime}_flag.txt", 'w') as file:
             file.write("DONE")
 
@@ -901,15 +905,6 @@ class NuAnalysis(Observation):
                 self.acquire_lightcurve(ids, tstart, tstop, xpix, ypix)
 
 
-    def acquire_pha(self, pilow, pihi, n):
-        """
-        """
-        pha_file = self._refpath + f"products/{pilow}_{pihi}/{n}/nu{self._seqid}B01_sr.pha"
-        with fits.open(pha_file) as hdul:
-            pha_data = hdul[1].data
-        return pha_data
-
-
     def plot_lightcurves(self):
         """
         Plots the background subtracted lightcurve of all detections.
@@ -940,31 +935,6 @@ class NuAnalysis(Observation):
             #ax.set_title(f"Energy Range: {kev_low} - {kev_high}", loc="right")
             plt.savefig(file.replace(".flc", ".pdf"), dpi=800)
             plt.close()
-
-
-    def plot_pha(self, pilow, pihi, n):
-        """
-        """
-
-        pha_data = self.acquire_pha(pilow, pihi, n)
-        fig, ax = plt.subplots()
-        y_dat = []
-        x_dat = []
-        first_key = list(self._exposure.keys())[0]
-        for datum in pha_data:
-            x_dat.append(chan_to_energy(datum[0]))
-            y_dat.append(datum[1]/self._exposure[first_key])
-        ax.plot(x_dat, y_dat)
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Counts/Time (c/s)")
-        plt.show()
-    
-
-    def generate_region(self, path, xpix, ypix):
-        """
-        This method generates a region file to be used for data analysis with a fits image.
-        """
-        pass
 
 
     def verify_dual_detection(self):
@@ -1106,4 +1076,52 @@ class NuAnalysis(Observation):
             return True, counts_A, counts_B
         else:
             return False, counts_A, counts_B    
+
+    def further_processing(self):
+
+
+        tot_data = fits.getdata(self._refpath + "science.evt", 1)
+        times = []
+        for datum in tot_data:
+            times.append(float(datum[0]))
+        
+        lc_bins = np.arange(np.min(times), np.max(times), 1)
+        lc, bines = np.histogram(times, lc_bins)
+        t = []
+        for idx, l in enumerate(lc):
+            t.append(idx)
+        t = np.array(t) * 10
+        plt.plot(t, lc, ms= 1)
+        
+        plt.title(f"Exposure time: {self._exposure['A01']}", loc="left")
+        plt.show()
+        plt.close()
+
+        detections, flag = self.read_final_detections()
+        if not flag:
+            for idx in range(len(detections['INDEX'])):
+                for interval in self.time_bins[0]:
+                    print(interval)
+                    phi_low = detections['BOUND'][idx].split('-')[0]
+                    phi_high = detections['BOUND'][idx].split('-')[1]
+                    #tstart = detections['TSTART'][idx]
+                    #tstop = detections['TSTOP'][idx]
+                    tstart = self.time_bins[0][interval][0]
+                    tstop = self.time_bins[0][interval][1]
+                    tot_data = fits.getdata(self._refpath + f"detections/{phi_low}-{phi_high}_{self._dtime}-{self._snr}/nu_{tstart}-{tstop}.evt", 1)
+                    times = []
+                    for datum in tot_data:
+                        times.append(float(datum[0]))
+                    
+                    lc_bins = np.arange(np.min(times), np.max(times), 1)
+                    lc, bines = np.histogram(times, lc_bins)
+                    t = []
+                    for idx, l in enumerate(lc):
+                        t.append(idx)
+                    t = np.array(t) * 10
+                    plt.plot(t, lc, ms= 1)
+                    
+                    plt.title(f"Exposure time: {self._exposure['A01']}", loc="left")
+                    plt.show()
+                    plt.close()
 
