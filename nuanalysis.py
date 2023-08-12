@@ -23,6 +23,7 @@ class NuAnalysis(Observation):
     """
 
     def __init__(self, dtime, snr_threshold, path=False, seqid=False, evdir=False, out_path=False, clean=False, bifrost=False, object_name=None, sessionid=None):
+        
         # Define analysis parameters
         self._snr = snr_threshold
         self._dtime = dtime
@@ -65,34 +66,6 @@ class NuAnalysis(Observation):
         
         super().__init__(path, seqid, evdir, out_path)
         
-        if not self._clean:
-            self.run_cleaning_script()
-
-        if "science.fits" not in self._contents:
-            print("Generating Science FITS image")
-            print(f"FILES: {self.science_files['A'][0]}, {self.science_files['B'][0]}")
-            infiles = f"{self.science_files['A'][0].replace(self._refpath, '')} , {self.science_files['B'][0].replace(self._refpath, '')}"
-            outfile = self._refpath + "science.fits"
-            name, number = make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79, sessionid + 1000, evt_extract=True)
-            subprocess.run(["xselect", f"@{number}xsel.xco"], capture_output=True)
-            subprocess.run(["rm", f"{number}xsel.xco"], capture_output=True)
-
-        hdu = fits.open(self._refpath + "science.fits", uint=True)[0]
-        self.wcs = WCS(hdu.header)
-        self.data = hdu.data
-        self._pix_coordinates = [skycoord_to_pixel(self._source_position, self.wcs)]
-        self.cuts = self.exposure['A01'] / self._dtime
-        """im_coordinates = radial_profile.find_source(self._refpath + "science.fits", show_image=False, filt_range=3)
-        same = False
-        if len(im_coordinates) == 0:
-            im_coordinates = self._pix_coordinates
-            same = True
-        if not same:
-            sep = np.sqrt((self._pix_coordinates[0][0] - im_coordinates[0][0])**2 + (self._pix_coordinates[0][1] - im_coordinates[0][1])**2)
-            if sep < 20:
-                im_coordinates = self._pix_coordinates"""
-        
-        #self._im_coordinates = im_coordinates
         self._im_coordinates = self._pix_coordinates
         im_coordinates = self._pix_coordinates
         self._im_skycoord = pixel_to_skycoord(im_coordinates[0][0], im_coordinates[0][1], self.wcs)
@@ -145,7 +118,26 @@ class NuAnalysis(Observation):
         Returns the detections found for this object.
         """
         return self._detections
+    
+    # Initialization methods below
+
+    def stack_images(self):
         
+        if "science.fits" not in self._contents:
+            infiles = f"{self.science_files['A'][0].replace(self._refpath, '')} , {self.science_files['B'][0].replace(self._refpath, '')}"
+            outfile = self._refpath + "science.fits"
+            script_id = generate_random_id()
+            make_xselect_commands(infiles, outfile, self._refpath, 1.6, 79, script_id, evt_extract=True)
+            subprocess.run(["xselect", f"@{script_id}xsel.xco"], capture_output=True)
+            subprocess.run(["rm", f"{script_id}xsel.xco"], capture_output=True)
+
+        hdu = fits.open(self._refpath + "science.fits", uint=True)[0]
+        self.wcs = WCS(hdu.header)
+        self.data = hdu.data
+        self._pix_coordinates = [skycoord_to_pixel(self._source_position, self.wcs)]
+        self.n_cuts = self.exposure['A01'] / self._dtime
+
+
     # Methods begin below
 
     def display_image(self, savefig=False, display=True):
@@ -501,7 +493,7 @@ class NuAnalysis(Observation):
             file_strings = []
             for file in det_files:
                 file_strings.append(file.replace(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/", ''))
-            script_string = "srcmrg/out=mrg.txt/tolerance=5e1"
+            script_string = f"srcmrg/out=mrg.txt/tolerance=13"
             for file in file_strings:
                 script_string += f" {file}"
             script_string += "\n"
@@ -581,7 +573,7 @@ class NuAnalysis(Observation):
 
         if not os.path.isdir(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/"):
             return None
-        if "mrg.txt" not in os.listdir(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/"):
+        if f"mrg.txt" not in os.listdir(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/"):
             return None           
 
         with open(self._refpath + f"detections/{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}/mrg.txt") as detections:
@@ -721,14 +713,13 @@ class NuAnalysis(Observation):
     
 
     def write_net_detections(self):
-
+        self.detection_merging()
         for bound in self._phi_bounds:
             trimmed_all_info = self.detection_dir_processing(bound)
             if trimmed_all_info != None:
                 n_obj = len(trimmed_all_info["INDEX"])
                 print(n_obj)
-                if n_obj > 5:
-                    return None
+                
 
         reduced_detections, tkeys = self.verify_dual_detection()
         trimmed_all_info = {}
