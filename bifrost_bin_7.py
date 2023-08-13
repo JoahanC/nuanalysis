@@ -1,7 +1,9 @@
 from helpers import *
 from nuanalysis import NuAnalysis
+from tqdm import tqdm
 
-dtime = 500
+
+dtime = 1000
 run_order = {}
 counter = 0
 with open("../test/runlist_7.txt", 'r') as run_file:
@@ -9,7 +11,7 @@ with open("../test/runlist_7.txt", 'r') as run_file:
 for idx, datum in enumerate(run_data):
     run_order[idx] = datum.split()
 
-for idx in run_order:
+for idx in tqdm(run_order):
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
     if f"nu{seqid}A01_cl.evt" in os.listdir(f"../bifrost_data/7/{seqid}/event_cl/"):
