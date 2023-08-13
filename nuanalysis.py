@@ -475,12 +475,15 @@ class NuAnalysis(Observation):
             stacked_files = [file.replace(running_directory, '') for file in stacked_images]
             for file in tqdm(stacked_files):
                 if len(fits.getdata(running_directory + file)) != 0:
-                    with open(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco", 'w') as script:
+                    script_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco"
+                    with open(script_path, 'w') as script:
                         script.write(f"read/fits/size=800/{file}\n")
                         script.write(f"detect/snr={self._snr}/source_box_size=12/filedet={file.replace('.evt', '')}.det/fitsdet={file.replace('.evt', '')}.fits\n")
                         script.write("exit")
-                    subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory)#, capture_output=True)
-                    subprocess.run(["rm", "ximage.xco"], cwd=running_directory)#, capture_output=True)
+                    os.system(f"ximage @{script_path} > xselect.log")
+                    os.system(f"rm -r -f {script_path}")
+                    #subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory)#, capture_output=True)
+                    #subprocess.run(["rm", "ximage.xco"], cwd=running_directory)#, capture_output=True)
         with open(self._evdir + f"{self._dtime}_flag.txt", 'w') as file:
             file.write("DONE")
 
