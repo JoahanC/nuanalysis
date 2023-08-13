@@ -469,18 +469,18 @@ class NuAnalysis(Observation):
         print('#' * 90)
 
         for bound in self._phi_bounds:
+            os.chdir(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/")
             print(f"Processing PHI Channels: {bound[0]}-{bound[1]}")
             running_directory = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
-            stacked_images = glob.glob(running_directory + "*.evt")
+            stacked_images = glob.glob("*.evt")
             stacked_files = [file.replace(running_directory, '') for file in stacked_images]
             for file in tqdm(stacked_files):
-                if len(fits.getdata(running_directory + file)) != 0:
+                if len(fits.getdata(file)) != 0:
                     script_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco" 
-                    with open(script_path, 'w') as script:
+                    with open(ximage.xco, 'w') as script:
                         script.write(f"read/fits/size=800/{file}\n")
                         script.write(f"detect/snr={self._snr}/source_box_size=8/filedet={file.replace('.evt', '')}.det/fitsdet={file.replace('.evt', '')}.fits\n")
                         script.write("exit")
-                    os.chdir(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/")
                     os.system(f"ximage @ximage.xco")
                     os.system(f"rm -r -f ximage.xco")
                     #subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory)#, capture_output=True)
