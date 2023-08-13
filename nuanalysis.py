@@ -476,9 +476,8 @@ class NuAnalysis(Observation):
             for file in tqdm(stacked_files):
                 if len(fits.getdata(running_directory + file)) != 0:
                     script_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco"
-                    filey = script_path.replace("ximage.xco", file)
                     with open(script_path, 'w') as script:
-                        script.write(f"read/fits/size=800/{filey}\n")
+                        script.write(f"read/fits/size=800/{file}\n")
                         script.write(f"detect/snr={self._snr}/source_box_size=8/filedet={file.replace('.evt', '')}.det/fitsdet={file.replace('.evt', '')}.fits\n")
                         script.write("exit")
                     os.system(f"ximage @{script_path}")
