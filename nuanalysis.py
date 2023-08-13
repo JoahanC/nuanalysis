@@ -467,7 +467,7 @@ class NuAnalysis(Observation):
         print(f"Optimized Source Radius: {self.rlimit}")
         print(f"Source Position: {self._pix_coordinates[0][0]}, {self._pix_coordinates[0][1]}")
         print('#' * 90)
-
+        old_path = os.getcwd()
         for bound in self._phi_bounds:
             os.chdir(self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/")
             print(f"Processing PHI Channels: {bound[0]}-{bound[1]}")
@@ -485,6 +485,7 @@ class NuAnalysis(Observation):
                     os.system(f"rm -r -f ximage.xco")
                     #subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory)#, capture_output=True)
                     #subprocess.run(["rm", "ximage.xco"], cwd=running_directory)#, capture_output=True)
+            os.chdir(old_path)
         with open(self._evdir + f"{self._dtime}_flag.txt", 'w') as file:
             file.write("DONE")
 
