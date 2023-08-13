@@ -478,7 +478,7 @@ class NuAnalysis(Observation):
                     script_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco"
                     with open(script_path, 'w') as script:
                         script.write(f"read/fits/size=800/{file}\n")
-                        script.write(f"detect/snr={self._snr}/source_box_size=12/filedet={file.replace('.evt', '')}.det/fitsdet={file.replace('.evt', '')}.fits\n")
+                        script.write(f"detect/snr={self._snr}/source_box_size=8/filedet={file.replace('.evt', '')}.det/fitsdet={file.replace('.evt', '')}.fits\n")
                         script.write("exit")
                     os.system(f"ximage @{script_path} > xselect.log")
                     os.system(f"rm -r -f {script_path}")
