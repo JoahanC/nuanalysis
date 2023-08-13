@@ -480,7 +480,7 @@ class NuAnalysis(Observation):
                         script.write(f"read/fits/size=800/{file}\n")
                         script.write(f"detect/snr={self._snr}/source_box_size=8/filedet={file.replace('.evt', '')}.det/fitsdet={file.replace('.evt', '')}.fits\n")
                         script.write("exit")
-                    os.system(f"ximage @{script_path} > xselect.log")
+                    os.system(f"ximage @{script_path}")
                     os.system(f"rm -r -f {script_path}")
                     #subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory)#, capture_output=True)
                     #subprocess.run(["rm", "ximage.xco"], cwd=running_directory)#, capture_output=True)
