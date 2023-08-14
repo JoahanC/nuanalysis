@@ -15,13 +15,22 @@ import radial_profile
 from astropy.coordinates import SkyCoord
 from regions import CircleSkyRegion
 
-
-basepath = "./../bifrost_data/**/**/detections/5000.tbl"
+cols = ['INDEX', 'COUNTS', 'XPIX', 'YPIX', 'VIGCOR', 'ERR', 'HBOX', 'PROB', 'SNR', 'TSTART', 'TSTOP', 'COUNTSERR', 'SEP', 'ACOUNTS', 'BCOUNTS']
+scols = ['RA', 'DEC', 'SEQID', 'BOUND']
+basepath = "./../bifrost_data/**/**/detections/1000_2.tbl"
 table_files = glob.glob(basepath)
+print(table_files)
 total_table = Table.read(table_files[0], format='ipac')
-for file in table_files[1:]:
+for file in tqdm(table_files[1:]):
     data_table = Table.read(file, format='ipac')
+    for col in cols:
+        data_table[col] = data_table[col].astype(float)
+        total_table[col] = total_table[col].astype(float)
+    for scol in scols:
+        data_table[scol] = data_table[scol].astype(str)
+        total_table[scol] = total_table[scol].astype(str)
     if len(data_table['RA']) == 0:
         continue
     total_table = vstack([total_table, data_table])
-total_table.write("complete.tbl", format='ipac')
+print(len(total_table['RA']))
+total_table.write("complete_1000.tbl", format='ipac', overwrite=True)

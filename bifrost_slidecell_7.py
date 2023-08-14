@@ -3,7 +3,7 @@ from nuanalysis import NuAnalysis
 from tqdm import tqdm
 
 
-dtime = 5000
+dtime = 500
 run_order = {}
 counter = 0
 with open("../test/runlist_7.txt", 'r') as run_file:
