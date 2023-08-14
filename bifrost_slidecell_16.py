@@ -8,7 +8,7 @@ dtimes = [5000, 1000, 500]
 for dtime in dtimes:
     run_order = {}
     counter = 0
-    with open("../test/runlist_2.txt", 'r') as run_file:
+    with open("../test/runlist_14.txt", 'r') as run_file:
         run_data = run_file.readlines()
     for idx, datum in enumerate(run_data):
         run_order[idx] = datum.split()
@@ -16,15 +16,11 @@ for dtime in dtimes:
     for idx in tqdm(run_order):
         object_name = run_order[idx][0]
         seqid = run_order[idx][1]
-        if f"{dtime}_binning_flag.txt" in os.listdir(f"../bifrost_data/2/{seqid}/event_cl/"):
-            if f"{dtime}_flag.txt" not in os.listdir(f"../bifrost_data/2/{seqid}/event_cl/"):
-                path = f"../bifrost_data/2/{seqid}/"
+        if f"{dtime}_binning_flag.txt" in os.listdir(f"../bifrost_data/14/{seqid}/event_cl/"):
+            if f"{dtime}_flag.txt" not in os.listdir(f"../bifrost_data/14/{seqid}/event_cl/"):
+                path = f"../bifrost_data/14/{seqid}/"
                 evdir = f"{path}event_cl/"
                 out_path = f"{path}products/"
-                run_object = NuAnalysis(dtime, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=2)
+                run_object = NuAnalysis(dtime, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=12)
                 run_object.sliding_cell_detection()
                 os.chdir(starting_directory)
-
-
-    
-
