@@ -368,6 +368,10 @@ class NuAnalysis(Observation):
         return [data_intervals_1, data_intervals_2]
 
 
+    def estimate_background(self):
+        return 
+
+
     def event_extraction(self):
         """
         Performs the event extraction procedures for binning the event file for this observation into 
@@ -375,8 +379,9 @@ class NuAnalysis(Observation):
         """
         
         # Make detections folder if not yet present
+        os.chdir(self.evdir)
         if "detections" not in self._contents:
-            os.mkdir(self._refpath + "detections/")
+            os.mkdir("./../detections/")
 
         # Display terminal
         print('#' * 90)
@@ -387,20 +392,17 @@ class NuAnalysis(Observation):
         # Iterate through all PHI channel bounds
         for bound in self._phi_bounds:
 
-            detect_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
+            # Generate detection folder for this PI channel
+            detect_path = f"./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/"
             generate_directory(detect_path, overwrite=False)
+
+            # Begin first pass through of data
             print(f"Binning data: PHI Bound {bound[0]}-{bound[1]}; Cycle 1")
             for interval in tqdm(self._time_bins[0]):
                 if len(self._time_bins[0][interval][2]) == 0:
                     continue
                 else:
-                    with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
-                        #n1 = random.random()
-                        #n2 = random.random()
-                        #n3 = random.random()
-                        #n4 = random.choice([100, 1000, 10000])
-                        #number = n1*n2*n3*n4
-                        #script.write(f'{number}\n')
+                    with open("xselect.xco", 'w') as script:
                         script.write(f'{self._sessionid}\n')
                         script.write(f"read events\n")
                         script.write(".\n")
@@ -414,25 +416,19 @@ class NuAnalysis(Observation):
                         script.write("x\n")
                         script.write("extract events\n")
                         script.write("\n")
-                        script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
+                        script.write(f"save events {detect_path}nu_{self._time_bins[0][interval][0]}-{self._time_bins[0][interval][1]}.evt\n")
                         script.write('no\n')
                         script.write("exit no\n")
-                    subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
-                    subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
-                    
+                    os.system(f"xselect @xselect.xco > {detect_path}xselect{self._time_bins[0][interval][0]}_{self._time_bins[0][interval][1]}")
+                    os.system("rm xselect.xco")
             
+            # Begin second pass through of data
             print(f"Binning data: PHI Bound {bound[0]}-{bound[1]}; Cycle 2")
             for interval in tqdm(self._time_bins[1]):
                 if len(self._time_bins[1][interval][2]) == 0:
                     continue
                 else:
-                    with open(self._refpath + "/event_cl/xselect.xco", 'w') as script:
-                        #n1 = random.random()
-                        #n2 = random.random()
-                        #n3 = random.random()
-                        #n4 = random.choice([100, 1000, 10000])
-                        #number = n1*n2*n3*n4
-                        #script.write(f'{number}\n')
+                    with open("xselect.xco", 'w') as script:
                         script.write(f'{self._sessionid}\n')
                         script.write(f"read events\n")
                         script.write(".\n")
@@ -446,12 +442,14 @@ class NuAnalysis(Observation):
                         script.write("x\n")
                         script.write("extract events\n")
                         script.write("\n")
-                        script.write(f"save events ./../detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
+                        script.write(f"save events {detect_path}nu_{self._time_bins[1][interval][0]}-{self._time_bins[1][interval][1]}.evt\n")
                         script.write('no\n')
                         script.write("exit no\n")
-                    subprocess.run(["xselect", "@xselect.xco"], cwd=self._evdir, capture_output=True)
-                    subprocess.run(["rm", "xselect.xco"], cwd=self._evdir, capture_output=True)
-        with open(self._evdir + f"{self._dtime}_binning_flag.txt", "w") as file:
+                    os.system(f"xselect @xselect.xco > {detect_path}xselect{self._time_bins[1][interval][0]}_{self._time_bins[1][interval][1]}")
+                    os.system("rm xselect.xco")
+        
+        # Write flag which signifies the completion of the event extraction routine
+        with open(f"{self._dtime}_binning_flag.txt", "w") as file:
             file.write("PROCESSING COMPLETE")
 
 
@@ -476,15 +474,12 @@ class NuAnalysis(Observation):
             stacked_files = [file.replace(running_directory, '') for file in stacked_images]
             for file in tqdm(stacked_files):
                 if len(fits.getdata(file)) != 0:
-                    script_path = self._refpath + f"detections/{bound[0]}-{bound[1]}_{self._dtime}-{self._snr}/ximage.xco" 
                     with open("ximage.xco", 'w') as script:
                         script.write(f"read/fits/size=800/{file}\n")
                         script.write(f"detect/snr={self._snr}/source_box_size=8/filedet={file.replace('.evt', '')}.det/fitsdet={file.replace('.evt', '')}.fits\n")
                         script.write("exit")
                     os.system(f"ximage @ximage.xco > ximage_{file}.log")
                     os.system(f"rm -r -f ximage.xco")
-                    #subprocess.run(["ximage", "@ximage.xco"], cwd=running_directory)#, capture_output=True)
-                    #subprocess.run(["rm", "ximage.xco"], cwd=running_directory)#, capture_output=True)
             os.chdir(old_path)
         with open(self._evdir + f"{self._dtime}_flag.txt", 'w') as file:
             file.write("DONE")
