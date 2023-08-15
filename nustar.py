@@ -385,7 +385,6 @@ class Observation():
                             self._exposure[keystr] = hdr['EXPOSURE']
                         else:
                             self._exposure[keystr] += hdr['EXPOSURE']
-        print(self.exposure)
         evt_array = getdata(self.science_files[mod][0])
         self._data = evt_array
         for evt in evt_array:
