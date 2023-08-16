@@ -5,6 +5,8 @@ from tqdm import tqdm
 dtime = 1000
 run_order = {}
 counter = 0
+low_phi_file = "./ref_files/nustar_pilow.txt"
+high_phi_file = "./ref_files/nustar_pihi.txt"
 with open("../test/runlist_7.txt", 'r') as run_file:
     run_data = run_file.readlines()
 for idx, datum in enumerate(run_data):
@@ -18,26 +20,8 @@ for idx in tqdm(run_order):
             path = f"../bifrost_data/7/{seqid}/"
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
-            run_object = NuAnalysis(dtime, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=7)
-            #run_object.detection_merging()
+            run_object = NuAnalysis(dtime, 3, path=path, low_phi_file=low_phi_file, high_phi_file=high_phi_file,
+                                    seqid=seqid, clean=True, bifrost=True, object_name=object_name)
             run_object.write_net_detections()
-
-run_order = {}
-counter = 0
-with open("../test/runlist_17.txt", 'r') as run_file:
-    run_data = run_file.readlines()
-for idx, datum in enumerate(run_data):
-    run_order[idx] = datum.split()
-
-for idx in tqdm(run_order):
-    object_name = run_order[idx][0]
-    seqid = run_order[idx][1]
-    if f"{dtime}_binning_flag.txt" in os.listdir(f"../bifrost_data/17/{seqid}/event_cl/"):
-        if f"{dtime}_flag.txt" in os.listdir(f"../bifrost_data/17/{seqid}/event_cl/"):
-            path = f"../bifrost_data/17/{seqid}/"
-            evdir = f"{path}event_cl/"
-            out_path = f"{path}products/"
-            run_object = NuAnalysis(dtime, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=17)
-            #run_object.detection_merging()
-            run_object.write_net_detections()
+            run_object.recalculate_poisson()
 

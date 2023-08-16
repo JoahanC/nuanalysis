@@ -7,7 +7,7 @@ run_order = {}
 counter = 0
 low_phi_file = "./ref_files/nustar_pilow.txt"
 high_phi_file = "./ref_files/nustar_pihi.txt"
-with open("../test/runlist_4.txt", 'r') as run_file:
+with open("../test/runlist_14.txt", 'r') as run_file:
     run_data = run_file.readlines()
 for idx, datum in enumerate(run_data):
     run_order[idx] = datum.split()
@@ -15,9 +15,9 @@ for idx, datum in enumerate(run_data):
 for idx in tqdm(run_order):
     object_name = run_order[idx][0]
     seqid = run_order[idx][1]
-    if f"{dtime}_binning_flag.txt" in os.listdir(f"../bifrost_data/4/{seqid}/event_cl/"):
-        if f"{dtime}_flag.txt" in os.listdir(f"../bifrost_data/4/{seqid}/event_cl/"):
-            path = f"../bifrost_data/4/{seqid}/"
+    if f"{dtime}_binning_flag.txt" in os.listdir(f"../bifrost_data/14/{seqid}/event_cl/"):
+        if f"{dtime}_flag.txt" in os.listdir(f"../bifrost_data/14/{seqid}/event_cl/"):
+            path = f"../bifrost_data/14/{seqid}/"
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
             run_object = NuAnalysis(dtime, 3, path=path, low_phi_file=low_phi_file, high_phi_file=high_phi_file,

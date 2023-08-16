@@ -17,7 +17,7 @@ def generate_directory(path, overwrite=False):
 
 def clear_directory(path):
     if os.path.isdir(path):
-        print(os.listdir(path))
+        #print(os.listdir(path))
         for file in os.listdir(path):
             os.remove(f"{path}/{file}")
     else:
@@ -155,13 +155,13 @@ def remove_tmp_folders(path):
         subprocess.run(["rm", "-rf", dir])
 
 
-def make_xselect_commands(infile, outfile, dir, elow, ehigh, sessionid, usrgti=False, evt_extract=True):
+def evt_to_fits_image(infile, outfile, dir, elow, ehigh, sessionid, usrgti=False):
     '''
     Helper script to generate the xselect commands to make an image in a given NuSTAR range
     '''
 
 
-    xsel=open(f"{sessionid}xsel.xco","w")
+    xsel=open(f"{sessionid}xselect.xco","w")
     xsel.write(f'{sessionid}\n')
     xsel.write('\n')
     xsel.write(f"{sessionid}\n")
@@ -182,11 +182,41 @@ def make_xselect_commands(infile, outfile, dir, elow, ehigh, sessionid, usrgti=F
     xsel.write("extract image\n")
     xsel.write("save image\n")
     xsel.write("%s \n" % outfile)
-    if evt_extract:
-        xsel.write("extract events")
-        xsel.write("\n")
-        xsel.write(f"save events {outfile.replace('.fits', '.evt')}\n")
-        xsel.write('no\n')
+    xsel.write('exit\n')           
+    xsel.write('n \n')
+    xsel.close()
+    return 'xsel.xco'
+
+
+def evt_xselect_filter(infile, outfile, dir, elow, ehigh, sessionid, usrgti=False):
+    '''
+    Helper script to generate the xselect commands to make an image in a given NuSTAR range
+    '''
+
+
+    xsel=open(f"{sessionid}xselect.xco","w")
+    xsel.write(f'{sessionid}\n')
+    xsel.write('\n')
+    xsel.write(f"{sessionid}\n")
+    xsel.write("read events \n")
+    xsel.write(f'{dir}\n')
+    xsel.write(f'{infile}\n ')
+    xsel.write('yes \n')
+    pi_low = energy_to_chan(elow)
+    pi_high = energy_to_chan(ehigh)
+    if usrgti is not False:
+        xsel.write(f'filter time \n')
+        xsel.write('file \n')
+        xsel.write(f'{usrgti}\n')
+        xsel.write('extract events\n')
+    xsel.write('filter pha_cutoff {} {} \n'.format(pi_low, pi_high))
+
+    xsel.write('set xybinsize 1\n')
+    xsel.write("extract events\n")
+    xsel.write("\n")
+    xsel.write(f"save events {outfile}\n")
+    xsel.write('no\n')
+    xsel.write('no\n')
     xsel.write('exit\n')           
     xsel.write('n \n')
     xsel.close()

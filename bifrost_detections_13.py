@@ -5,6 +5,8 @@ from tqdm import tqdm
 dtime = 1000
 run_order = {}
 counter = 0
+low_phi_file = "./ref_files/nustar_pilow.txt"
+high_phi_file = "./ref_files/nustar_pihi.txt"
 with open("../test/runlist_26.txt", 'r') as run_file:
     run_data = run_file.readlines()
 for idx, datum in enumerate(run_data):
@@ -18,9 +20,10 @@ for idx in tqdm(run_order):
             path = f"../bifrost_data/26/{seqid}/"
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
-            run_object = NuAnalysis(dtime, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=26)
-            #run_object.detection_merging()
+            run_object = NuAnalysis(dtime, 3, path=path, low_phi_file=low_phi_file, high_phi_file=high_phi_file,
+                                    seqid=seqid, clean=True, bifrost=True, object_name=object_name)
             run_object.write_net_detections()
+            run_object.recalculate_poisson()
 
 
 run_order = {}
@@ -38,6 +41,7 @@ for idx in tqdm(run_order):
             path = f"../bifrost_data/22/{seqid}/"
             evdir = f"{path}event_cl/"
             out_path = f"{path}products/"
-            run_object = NuAnalysis(dtime, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True, bifrost=True, object_name=object_name, sessionid=22)
-            #run_object.detection_merging()
+            run_object = NuAnalysis(dtime, 3, path=path, low_phi_file=low_phi_file, high_phi_file=high_phi_file,
+                                    seqid=seqid, clean=True, bifrost=True, object_name=object_name)
             run_object.write_net_detections()
+            run_object.recalculate_poisson()
