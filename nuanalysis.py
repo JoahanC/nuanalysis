@@ -839,8 +839,11 @@ class NuAnalysis(Observation):
 
         for channel in self._phi_channels:
             detpath = os.path.relpath(os.path.join(self._detpath, f"{channel[0]}-{channel[1]}_{self._dtime}-{self._snr}"))
+            if not os.path.isdir(detpath):
+                continue
             os.chdir(detpath)
             detfiles = glob.glob("*.det")
+            
             # Construct xselect script string
             script_string = f"srcmrg/out=mrg.txt/tolerance=13" 
             for file in detfiles:
