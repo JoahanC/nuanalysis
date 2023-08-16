@@ -7,6 +7,7 @@ run_order = {}
 counter = 0
 low_phi_file = "./ref_files/nustar_pilow.txt"
 high_phi_file = "./ref_files/nustar_pihi.txt"
+starting_directory = os.getcwd()
 with open("../test/runlist_3.txt", 'r') as run_file:
     run_data = run_file.readlines()
 for idx, datum in enumerate(run_data):
@@ -24,6 +25,7 @@ for idx in tqdm(run_order):
                                     seqid=seqid, clean=True, bifrost=True, object_name=object_name)
             run_object.write_net_detections()
             run_object.recalculate_poisson()
+            os.chdir(starting_directory)
 
 run_order = {}
 counter = 0
@@ -44,4 +46,5 @@ for idx in tqdm(run_order):
                                     seqid=seqid, clean=True, bifrost=True, object_name=object_name)
             run_object.write_net_detections()
             run_object.recalculate_poisson()
+            os.chdir(starting_directory)
 

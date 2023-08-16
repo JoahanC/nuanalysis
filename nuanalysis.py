@@ -854,7 +854,7 @@ class NuAnalysis(Observation):
                 with open("src_merge.xco", 'w') as script:
                     script.write(script_string)
                     script.write("exit\n")
-                os.system(f"ximage @src_merge.xco ")
+                os.system(f"ximage @src_merge.xco > {logfile}")
                 os.system(f"rm -r -f src_merge.xco")
         os.chdir(self._mainpath)
 
@@ -1070,7 +1070,7 @@ class NuAnalysis(Observation):
         print("Merging all valid detections")
         self.detection_merging()
 
-        for channel in tqdm(self._phi_channels):
+        for channel in self._phi_channels:
             trimmed_all_info = self.detection_dir_processing(channel)
             if trimmed_all_info != None:
                 n_obj = len(trimmed_all_info["INDEX"])
