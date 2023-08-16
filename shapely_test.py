@@ -24,7 +24,7 @@ def calculate_background_area(data, src_x, src_y, optimal_radius):#, filepath):
     fig, ax = plt.subplots()
     ax.imshow(data, norm=matplotlib.colors.LogNorm())
     plot_polygon(final_region, ax=ax, add_points=False)
-    plt.show()
+    #plt.show()
     #plt.savefig(filepath, dpi=1000)
     return final_region.area
 
