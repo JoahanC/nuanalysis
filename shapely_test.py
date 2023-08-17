@@ -21,9 +21,9 @@ def calculate_background_area(data, src_x, src_y, optimal_radius):#, filepath):
     shared_region = difference.intersection(rectangle)
     final_region = shared_region.difference(inner_horizontal_bar).difference(inner_vertical_bar)
 
-    fig, ax = plt.subplots()
-    ax.imshow(data, norm=matplotlib.colors.LogNorm())
-    plot_polygon(final_region, ax=ax, add_points=False)
+    #fig, ax = plt.subplots()
+    #ax.imshow(data, norm=matplotlib.colors.LogNorm())
+    #plot_polygon(final_region, ax=ax, add_points=False)
     #plt.show()
     #plt.savefig(filepath, dpi=1000)
     return final_region.area
