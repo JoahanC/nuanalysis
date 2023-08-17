@@ -216,6 +216,8 @@ class NuAnalysis(Observation):
 
         # Filtered event files
         self._evt_files = {}
+        #os.chdir(self._evtpath)
+        print(os.getcwd())
 
         # keV level focused FPMA evt files
         for level in self._kev_levels:
