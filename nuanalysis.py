@@ -216,8 +216,6 @@ class NuAnalysis(Observation):
 
         # Filtered event files
         self._evt_files = {}
-        #os.chdir(self._evtpath)
-        print(os.getcwd())
 
         # keV level focused FPMA evt files
         for level in self._kev_levels:
@@ -302,6 +300,7 @@ class NuAnalysis(Observation):
 
 
         hdu = fits.open(outfile, uint=True)[0]
+        self.stacked_data = getdata(outfile)
         self.wcs = WCS(hdu.header)
         self._source_pix_coordinates = [skycoord_to_pixel(self._source_position, self.wcs)]
         self.n_cuts = self.exposure['A01'] / self._dtime
@@ -316,7 +315,7 @@ class NuAnalysis(Observation):
         """
         
         ax = plt.subplot(projection=self.wcs)
-        im = ax.imshow(self.data, origin='lower', norm=matplotlib.colors.LogNorm())
+        im = ax.imshow(self.stacked_data, origin='lower', norm=matplotlib.colors.LogNorm())
         object_region = CircleSkyRegion(center=self._source_position, radius=self.rlimit*u.arcsecond)
         plot_region = object_region.to_pixel(self.wcs)
         plot_region.plot(ax=ax, color="yellow")
@@ -336,11 +335,12 @@ class NuAnalysis(Observation):
 
     def read_final_detections(self):
 
-        if f"{self._dtime}_3.tbl" not in os.listdir(self._refpath + "detections/"):
+        detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_poisson.tbl"))
+        if not os.path.isfile(detpath):
             print("No final detections found!")
             return None, False
         
-        detect_info = Table.read(self._refpath + f"detections/{self._dtime}_3.tbl", format='ipac')
+        detect_info = Table.read(detpath, format='ipac')
         if len(detect_info['INDEX']) == 0:
             return detect_info, False
         else:
@@ -355,11 +355,13 @@ class NuAnalysis(Observation):
         """
         
         detections, flag = self.read_final_detections()
+        if not flag:
+            self.display_image()
         if len(detections["INDEX"]) == 0:
             self.display_image()
         else:
             ax = plt.subplot()
-            im = ax.imshow(self.data, origin='lower', norm=matplotlib.colors.LogNorm())
+            im = ax.imshow(self.stacked_data, origin='lower', norm=matplotlib.colors.LogNorm())
             object_region = CircleSkyRegion(center=self._source_position, radius=self.rlimit*u.arcsecond)
             plot_region = object_region.to_pixel(self.wcs)
             plot_region.plot(ax=ax, color="yellow")
@@ -385,7 +387,8 @@ class NuAnalysis(Observation):
             
 
             if savefig:
-                plt.savefig(self._refpath + f"products/stacked_full_2.pdf", dpi=1000)
+                savepath = os.path.relpath(os.path.join(self._outpath, "final_detections.pdf"))
+                plt.savefig(savepath, dpi=1000)
             if display:
                 plt.show()
         
@@ -1407,7 +1410,7 @@ class NuAnalysis(Observation):
 
         indpath = os.path.relpath(os.path.join(self._detpath, f"{channel[0]}-{channel[1]}_{self._dtime}-{self._snr}/individual"))   
         filestub = os.path.relpath(os.path.join(indpath, f"nu_{tstart}-{tstop}"))
-        evtfiles = glob.glob(filestub + '*')
+        evtfiles = glob.glob(filestub + '*.evt')
         passing_A = False
         passing_B = False
         counts_A = 0
