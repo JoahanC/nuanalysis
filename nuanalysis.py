@@ -851,7 +851,7 @@ class NuAnalysis(Observation):
             
             # Construct xselect script string
             script_string = f"srcmrg/out=mrg.txt/tolerance=13" 
-            for file in detfiles:
+            for file in tqdm(detfiles):
                 script_string += f" {file}"
             script_string += "\n"
             
