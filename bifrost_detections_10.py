@@ -19,7 +19,7 @@ for dtime in dtimes:
         seqid = run_order[idx][1]
         if f"{dtime}_binning_flag.txt" in os.listdir(f"../bifrost_data/10/{seqid}/event_cl/"):
             if f"{dtime}_flag.txt" in os.listdir(f"../bifrost_data/10/{seqid}/event_cl/"):
-                if f"{dtime}_poisson.tbl" not in os.listdir(f"../bifrost_data/10/{seqid}/detections"):
+                #if f"{dtime}_poisson.tbl" not in os.listdir(f"../bifrost_data/10/{seqid}/detections"):
                     path = f"../bifrost_data/10/{seqid}/"
                     evdir = f"{path}event_cl/"
                     out_path = f"{path}products/"
@@ -41,7 +41,7 @@ for dtime in dtimes:
         seqid = run_order[idx][1]
         if f"{dtime}_binning_flag.txt" in os.listdir(f"../bifrost_data/20/{seqid}/event_cl/"):
             if f"{dtime}_flag.txt" in os.listdir(f"../bifrost_data/20/{seqid}/event_cl/"):
-                if f"{dtime}_poisson.tbl" not in os.listdir(f"../bifrost_data/20/{seqid}/detections"):
+                #if f"{dtime}_poisson.tbl" not in os.listdir(f"../bifrost_data/20/{seqid}/detections"):
                     path = f"../bifrost_data/20/{seqid}/"
                     evdir = f"{path}event_cl/"
                     out_path = f"{path}products/"
