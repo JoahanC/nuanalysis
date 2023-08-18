@@ -1334,7 +1334,7 @@ class NuAnalysis(Observation):
                     
                 
                 
-                for idx in range(len(trimmed_all_info["INDEX"])):
+                for idx in tqdm(range(len(trimmed_all_info["INDEX"]))):
                     flag, counts_A, counts_B = self.slide_cell_verification(trimmed_all_info["XPIX"][idx], 
                                                         trimmed_all_info["YPIX"][idx], 
                                                         trimmed_all_info["TSTART"][idx], 
