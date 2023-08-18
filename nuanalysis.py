@@ -1329,24 +1329,24 @@ class NuAnalysis(Observation):
                 tkeys = []
                 for key in trimmed_all_info:
                     tkeys.append(key)
-                tkeys.append('ACOUNTS')
-                tkeys.append('BCOUNTS')
+                #tkeys.append('ACOUNTS')
+                #tkeys.append('BCOUNTS')
                     
                 
-                
+                flag = True
                 for idx in tqdm(range(len(trimmed_all_info["INDEX"]))):
-                    flag, counts_A, counts_B = self.slide_cell_verification(trimmed_all_info["XPIX"][idx], 
-                                                        trimmed_all_info["YPIX"][idx], 
-                                                        trimmed_all_info["TSTART"][idx], 
-                                                        trimmed_all_info["TSTOP"][idx],
-                                                        channel)
+                    #flag, counts_A, counts_B = self.slide_cell_verification(trimmed_all_info["XPIX"][idx], 
+                    #                                    trimmed_all_info["YPIX"][idx], 
+                    #                                    trimmed_all_info["TSTART"][idx], 
+                    #                                    trimmed_all_info["TSTOP"][idx],
+                    #                                    channel)
                     if flag:
                         values = []
                         for key in trimmed_all_info:
                             values.append(trimmed_all_info[key][idx])
-                        values.append(counts_A)
-                        values.append(counts_B)
-                        total_detections[len(total_detections)] = values
+                        #values.append(counts_A)
+                        #values.append(counts_B)
+                        #total_detections[len(total_detections)] = values
                     
         return total_detections, tkeys
 
