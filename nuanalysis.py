@@ -1346,7 +1346,7 @@ class NuAnalysis(Observation):
                             values.append(trimmed_all_info[key][idx])
                         #values.append(counts_A)
                         #values.append(counts_B)
-                        #total_detections[len(total_detections)] = values
+                        total_detections[len(total_detections)] = values
                     
         return total_detections, tkeys
 
