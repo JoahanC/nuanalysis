@@ -20,7 +20,7 @@ for dtime in dtimes:
         seqid = run_order[idx][1]
         if f"{dtime}_binning_flag.txt" in os.listdir(f"../bifrost_data/1/{seqid}/event_cl/"):
             if f"{dtime}_flag.txt" in os.listdir(f"../bifrost_data/1/{seqid}/event_cl/"):
-                #if f"{dtime}_poisson.tbl" not in os.listdir(f"../bifrost_data/1/{seqid}/detections"):
+                if f"{dtime}_poisson.tbl" not in os.listdir(f"../bifrost_data/1/{seqid}/detections"):
                     path = f"../bifrost_data/1/{seqid}/"
                     
                     run_object = NuAnalysis(dtime, 3, path=path, low_phi_file=low_phi_file, high_phi_file=high_phi_file,
@@ -41,7 +41,7 @@ for dtime in dtimes:
         seqid = run_order[idx][1]
         if f"{dtime}_binning_flag.txt" in os.listdir(f"../bifrost_data/11/{seqid}/event_cl/"):
             if f"{dtime}_flag.txt" in os.listdir(f"../bifrost_data/11/{seqid}/event_cl/"):
-                #if f"{dtime}_poisson.tbl" not in os.listdir(f"../bifrost_data/11/{seqid}/detections"):
+                if f"{dtime}_poisson.tbl" not in os.listdir(f"../bifrost_data/11/{seqid}/detections"):
                     path = f"../bifrost_data/11/{seqid}/"
                     evdir = f"{path}event_cl/"
                     out_path = f"{path}products/"
@@ -64,7 +64,7 @@ for dtime in dtimes:
         seqid = run_order[idx][1]
         if f"{dtime}_binning_flag.txt" in os.listdir(f"../bifrost_data/21/{seqid}/event_cl/"):
             if f"{dtime}_flag.txt" in os.listdir(f"../bifrost_data/21/{seqid}/event_cl/"):
-                #if f"{dtime}_poisson.tbl" not in os.listdir(f"../bifrost_data/21/{seqid}/detections"):
+                if f"{dtime}_poisson.tbl" not in os.listdir(f"../bifrost_data/21/{seqid}/detections"):
                     path = f"../bifrost_data/21/{seqid}/"
                     evdir = f"{path}event_cl/"
                     out_path = f"{path}products/"
