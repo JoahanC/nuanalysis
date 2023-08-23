@@ -25,8 +25,7 @@ for dtime in dtimes:
                     out_path = f"{path}products/"
                     run_object = NuAnalysis(dtime, 3, path=path, low_phi_file=low_phi_file, high_phi_file=high_phi_file,
                                             seqid=seqid, clean=True, bifrost=True, object_name=object_name)
-                    run_object.write_net_detections()
-                    run_object.recalculate_poisson()
+                    run_object.classify_sources()
                     os.chdir(starting_directory)
 
     run_order = {}
