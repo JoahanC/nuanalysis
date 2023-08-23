@@ -5,6 +5,8 @@ Main class for performing X-ray FOV source detections on NuSTAR observations.
 import os
 import subprocess
 import glob
+from shapely.geometry import Point
+from shapely.plotting import plot_polygon
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -314,16 +316,22 @@ class NuAnalysis(Observation):
         source labeled with a circular region.
         """
         
-        ax = plt.subplot(projection=self.wcs)
+        fig = plt.figure()
+        ax = fig.add_subplot(projection=self.wcs)
+        #ax = plt.subplot(projection=self.wcs)
+        fig.patch.set_facecolor('black')
         im = ax.imshow(self.stacked_data, origin='lower', norm=matplotlib.colors.LogNorm())
-        object_region = CircleSkyRegion(center=self._source_position, radius=self.rlimit*u.arcsecond)
+        ax.set_facecolor('gray')
+        object_region = CircleSkyRegion(center=self._source_position, radius=(self.rlimit - 50) * u.arcsecond)
         plot_region = object_region.to_pixel(self.wcs)
         plot_region.plot(ax=ax, color="yellow")
-
+        ax.tick_params(color='white', labelcolor='white')
+        ax.tick_params(axis='both', which='major', labelsize=15)
+        im.axes.tick_params(color='white', labelcolor='white')
         #ax.get_coords_overlay()
         plt.grid(True)
-        plt.xlabel('RA')
-        plt.ylabel('DEC')
+        plt.xlabel('Right Ascension', color='white', fontsize=18)
+        plt.ylabel('Declination', color='white', fontsize=18)
         plt.xlim(250, 750)
         plt.ylim(250, 750)
 
@@ -354,17 +362,26 @@ class NuAnalysis(Observation):
         observation labeled.
         """
         
+        NoneType = type(None)
         detections, flag = self.read_final_detections()
-        if not flag:
+        print(type(detections))
+        if type(detections) == NoneType:
             self.display_image()
+            return
         if len(detections["INDEX"]) == 0:
             self.display_image()
         else:
-            ax = plt.subplot()
+            fig = plt.figure()
+            ax = fig.add_subplot(projection=self.wcs)
+            ax.set_facecolor('gray')
+            #ax = plt.subplot(projection=self.wcs)
+            fig.patch.set_facecolor('black')
             im = ax.imshow(self.stacked_data, origin='lower', norm=matplotlib.colors.LogNorm())
-            object_region = CircleSkyRegion(center=self._source_position, radius=self.rlimit*u.arcsecond)
-            plot_region = object_region.to_pixel(self.wcs)
-            plot_region.plot(ax=ax, color="yellow")
+            circle = Point(self._source_pix_coordinates[0][0], self._source_pix_coordinates[0][1]).buffer(self.rlimit / 2.46, resolution=1000)
+            plot_polygon(circle, ax=ax, add_points=False, color="yellow")
+            #object_region = CircleSkyRegion(center=self._source_position, radius=self.rlimit*u.arcsecond)
+            #plot_region = object_region.to_pixel(self.wcs)
+            #plot_region.plot(ax=ax, color="green")
 
             # Loop through detections and plot
             
@@ -372,16 +389,22 @@ class NuAnalysis(Observation):
             x_pi = [float(pix) for pix in x_pix]
             y_pix = detections['YPIX']
             y_pi = [float(pix) for pix in y_pix]
-            probs = np.array(detections['PVAL'])
+            probs = np.array(detections['PROB'])
             probs_pi = [float(prob) for prob in probs]
 
-            ploty = ax.scatter(x_pi, y_pi, marker="d", c=probs_pi, s=40, linewidths=1, edgecolors= "black", cmap='spring', norm=matplotlib.colors.LogNorm())               
-            
+            ploty = ax.scatter(x_pi, y_pi, marker="d", c=probs_pi, s=80, linewidths=1, edgecolors= "black", cmap='spring', norm=matplotlib.colors.LogNorm())               
+            ax.tick_params(color='white', labelcolor='white')
+            ax.tick_params(axis='both', which='major', labelsize=15)
+            im.axes.tick_params(color='white', labelcolor='white')
             #ax.get_coords_overlay(self.wcs)
-            plt.colorbar(ploty)
+            cb = plt.colorbar(ploty, orientation='horizontal', shrink=0.5)
+            cb.set_label('Probability', color='white', fontsize=15)
+            cb.ax.xaxis.set_tick_params(color='white')
+            cb.outline.set_edgecolor('white')
+            plt.setp(plt.getp(cb.ax.axes, 'xticklabels'), color='white', fontsize=15)
             plt.grid(True)
-            plt.xlabel('RA')
-            plt.ylabel('DEC')
+            plt.xlabel('Right Ascension', color='white', fontsize=18)
+            plt.ylabel('Declination', color='white', fontsize=18)
             plt.xlim(250, 750)
             plt.ylim(250, 750)
             
@@ -1033,6 +1056,7 @@ class NuAnalysis(Observation):
             dec = detect_info["DEC"][int(i) - 1]
             detect_position = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg), frame='fk5')
             if self._source_position.separation(detect_position).arcsec > self.rlimit:
+                print(self._source_position.separation(detect_position).arcsec)
                 for key in detect_info:
                     trimmed_detect_info[key].append(detect_info[key][int(i) - 1])
         return trimmed_detect_info
@@ -1716,3 +1740,56 @@ class NuAnalysis(Observation):
         #plt.show()
         #plt.close()
         return count * 20
+    
+
+    def classify_sources(self):
+        """
+        This method applies a simple algorithm to classify persistent vs 
+        transient sources.
+        """
+        
+        print("#" * 90)
+        print(f"Measuring the persistence value for poisson verified sources.")
+        print("#" * 90)
+        detections, flag = self.read_final_detections()
+        
+        NoneType = type(None)
+        if type(detections) == NoneType:
+            return
+        if len(detections["INDEX"]) == 0:
+            return
+        
+        tpersist = []
+        cpersist = []
+        for index, value in enumerate(detections['INDEX']):
+            
+            tstarts = []
+            tstops = []
+            channels = []
+            xpix = float(detections["XPIX"][index])
+            ypix = float(detections["YPIX"][index])
+            tstarts.append(detections["TSTART"][index])
+            tstops.append(detections["TSTOP"][index])
+            channels.append(detections["BOUND"][index])
+            for index2, value2 in enumerate(detections['INDEX']):
+                if np.sqrt((float(detections["XPIX"][index2]) - xpix) ** 2 + (float(detections["YPIX"][index2]) - ypix) ** 2) <= 8:
+                    tstarts.append(detections["TSTART"][index2])
+                    tstops.append(detections["TSTOP"][index2])
+                    channels.append(detections["BOUND"][index2])
+            present_percent = min(len(set(tstarts)), len(set(tstops))) / self.n_cuts
+            channels_percent = len(set(channels)) / 4
+            tpersist.append(present_percent)
+            cpersist.append(channels_percent)
+        detections['TPERSIST'] = tpersist
+        detections['CPERSIST'] = cpersist
+        detect_table = Table(detections)
+        detect_table.write(os.path.join(self._detpath, f"{self._dtime}_classify.tbl"), format='ipac', overwrite=True)
+
+
+
+
+        
+
+
+
+
