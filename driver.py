@@ -1,8 +1,39 @@
 from nuanalysis import *
+from astropy.io.fits import getdata, getheader
+import matplotlib.pyplot
+import os
 
-seqid = "90901325002"
-path = f"../data/{seqid}/"
-evdir = f"{path}event_cl/"
-out_path = f"{path}products/"
-test = NuAnalysis(10000, 3, path=path, evdir=evdir, seqid=seqid, out_path=out_path, clean=True)
-test.extract_detections()
+starting_directory = os.getcwd()
+seqids = ["60201020002"]
+dtimes = [5000]#, 1000, 500]
+low_phi_file = "./ref_files/nustar_pilow.txt"
+high_phi_file = "./ref_files/nustar_pihi.txt"
+for dtime in dtimes:
+    object_name = "test"
+    for seqid in seqids:
+        path = f"/Volumes/data_ssd_1/bifrost_data/15/{seqid}/"
+        evdir = f"{path}event_cl/"
+        out_path = f"{path}products/"
+        run_object = NuAnalysis(dtime, 3, path=path, low_phi_file=low_phi_file, high_phi_file=high_phi_file,
+                                            seqid=seqid, clean=True, bifrost=True, object_name=object_name)
+        #run_object.sky_to_detector(run_object._source_position.ra.deg, run_object._source_position.dec.deg)
+        #print(run_object.determine_bright())
+        #run_object.display_detections()
+        run_object.collect_det1coords()
+        os.chdir(starting_directory)
+
+
+"""data = getdata(f"../bifrost_data/{seqid}/event_cl/nu{seqid}_detpos.fits")
+header = getheader(f"../bifrost_data/{seqid}/event_cl/nu{seqid}_detpos.fits")
+times = []
+detx = []
+dety = []
+for datum in data:
+    times.append(float(datum[0]))
+    detx.append(float(datum[1]))
+    dety.append(float(datum[2]))
+
+plt.scatter(detx, dety)
+plt.xlim(0, 300)
+plt.ylim(0, 300)
+plt.show()"""

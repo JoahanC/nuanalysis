@@ -5,16 +5,19 @@ Main class for performing X-ray FOV source detections on NuSTAR observations.
 import os
 import subprocess
 import glob
-from shapely.geometry import Point
-from shapely.plotting import plot_polygon
+from tqdm import tqdm
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+
+from shapely.geometry import Point
+from shapely.plotting import plot_polygon
+
 from nustar import *
 from helpers import *
 from wrappers import *
 from astropy.io import fits
-from astropy.io.fits import getdata
+
 from astropy import units as u
 from astropy.wcs import WCS
 from astropy.table import Table
@@ -24,7 +27,7 @@ from astropy.coordinates import SkyCoord
 from regions import CircleSkyRegion
 from astropy.wcs.utils import skycoord_to_pixel, pixel_to_skycoord
 from photutils.aperture import RectangularAperture, CircularAperture, CircularAnnulus
-from shapely_test import *
+from photometry import *
 from scipy.stats import poisson_means_test
 
 class NuAnalysis(Observation):
@@ -35,6 +38,9 @@ class NuAnalysis(Observation):
     def __init__(self, dtime, snr_threshold, low_phi_file, high_phi_file, 
                  path=False, seqid=False, clean=False, bifrost=False, object_name=None):
         
+        # Initialize NuSTAR object
+        self.ns = NuSTAR()
+
         # Define class parameters and core file locations
         self._object = object_name
         self._seqid = seqid
@@ -101,68 +107,58 @@ class NuAnalysis(Observation):
                 self._clean = True
 
         # Perform file sanity check
+        self.completeness_flag = True
         if f"nu{self._seqid}A01_cl.evt" not in self._evtcontents:
-            raise FileNotFoundError("Clean events file for FPMA missing!")
+            print("Clean events file for FPMA missing!")
+            self.completeness_flag = False
         if f"nu{self._seqid}B01_cl.evt" not in self._evtcontents:
-            raise FileNotFoundError("Clean events file for FPMA missing!")
+            print("Clean events file for FPMB missing!")
+            self.completeness_flag = False
         
-        self._fpma_eventpath = os.path.join(self._evtpath, f"nu{self._seqid}A01_cl.evt")
-        self._fpmb_eventpath = os.path.join(self._evtpath, f"nu{self._seqid}B01_cl.evt")
+        if self.completeness_flag:
+        
+            self._fpma_eventpath = os.path.join(self._evtpath, f"nu{self._seqid}A01_cl.evt")
+            self._fpmb_eventpath = os.path.join(self._evtpath, f"nu{self._seqid}B01_cl.evt")
 
-        # Initialize the Observation superclass
-        super().__init__(self._mainpath, self._seqid, self._evtpath, self._outpath)
+            # Initialize the Observation superclass
+            super().__init__(self._mainpath, self._seqid, self._evtpath, self._outpath)
+            
 
-        # Generate subsets of original event files
-        self._filter_evt_files()
-        
-        # Generate optimal radius for snr 
-        self._im_skycoord = pixel_to_skycoord(self._source_pix_coordinates[0][0], self._source_pix_coordinates[0][1], self.wcs)
-        rind, rad_profile, radial_err, psf_profile = radial_profile.make_radial_profile(self._im_paths[f"{self._kev_levels[0][0]}-{self._kev_levels[0][1]}"][2],
-                                                                                        show_image=False,
-                                                                                        coordinates = self._source_pix_coordinates)
-        self.rlimit = radial_profile.optimize_radius_snr(rind, rad_profile, radial_err, psf_profile, show=False)
-        
-        # Buffer radius to reduce main source polluting detections
-        if self.rlimit == 0:
-            self.rlimit += 100
-        self.rlimit += 150
-        
-        # Initialize detection parameters
-        self._time_bins = self.generate_timebins()
-        self._detections = None
-        
-        # Ensure detector images are generated
-        if "det1_coords.txt" not in self._imcontents:
-            print("Detector coordinates not found! Estimating coordinates.")
-            self.source_det1_coords()
-        #self.generate_background_images()
-        
-        # Read in detector coordinates
-        self._source_det1_coords = {}
-        
-        with open(os.path.join(self._impath, "det1_coords.txt"), 'r') as file:
-            data_line = file.readline().split()
-            self._source_det1_coords['A'] = [float(data_line[0]), float(data_line[1])]
-            self._source_det1_coords['B'] = [float(data_line[2]), float(data_line[3])]
+            # Generate subsets of original event files
+            self._process_evt_files()
+            
+            # Generate optimal radius for snr 
+            self._im_skycoord = pixel_to_skycoord(self._source_pix_coordinates[0][0], self._source_pix_coordinates[0][1], self.wcs)
+            rind, rad_profile, radial_err, psf_profile = radial_profile.make_radial_profile(self._im_paths[f"{self._kev_levels[0][0]}-{self._kev_levels[0][1]}"][2],
+                                                                                            show_image=False,
+                                                                                            coordinates = self._source_pix_coordinates)
+            self.rlimit = radial_profile.optimize_radius_snr(rind, rad_profile, radial_err, psf_profile, show=False)
+            
+            # Buffer radius to reduce main source polluting detections
+            if self.rlimit == 0:
+                self.rlimit = 120
+            if self.rlimit <= 90:
+                self.rlimit = 90
+            
+            # Initialize detection parameters
+            self._time_bins = self.generate_timebins()
+            self._detections = None
+            
+            # Ensure detector images are generated
+            if "det1_coords.txt" not in self._imcontents:
+                print("Detector coordinates not found! Estimating coordinates.")
+                self.source_det1_coords()
+            #self.generate_background_images()
+            
+            # Read in detector coordinates
+            self._source_det1_coords = {}
+            
+            with open(os.path.join(self._impath, "det1_coords.txt"), 'r') as file:
+                data_line = file.readline().split()
+                self._source_det1_coords['A'] = [float(data_line[0]), float(data_line[1])]
+                self._source_det1_coords['B'] = [float(data_line[2]), float(data_line[3])]
 
-        self._display_terminal()
-        
-        # Deprecated background rate calculations
-
-        #if "background_rates.txt" not in os.listdir(self._photodir):
-        #    self.estimate_background()
-        
-        #with open(self._photodir+ "background_rates.txt", 'r') as file:
-        #    rates = file.readline().split()
-        #    quantity_rates = []
-        #    for rate in rates:
-        #        value = rate.replace('[', '').replace(']', '')
-        #        quantity_rates.append(float(value) * u.ct / u.arcsecond / u.arcsecond / u.second)
-        #    self.background_rates = {}
-        #    for idx, bound in enumerate(self._phi_bounds):
-        #        elow = round(chan_to_energy(float(bound[0])), 3)
-        #        ehigh = round(chan_to_energy(float(bound[1])), 3)
-        #        self.background_rates[f"{elow}-{ehigh}"] = [quantity_rates[idx * 2], quantity_rates[idx * 2 + 1]]
+            self._display_terminal()
 
     # Mutable properties begin below
 
@@ -211,10 +207,16 @@ class NuAnalysis(Observation):
         print("#" * 90)
         print(f"Succesfully read in {self._object}: {self._seqid}")
         print(f"Main Source located: ({self._source_pix_coordinates[0][0]}, {self._source_pix_coordinates[0][1]})")
-        print(f"Masking radius: {self.rlimit} arcseconds")
+        #print(f"Masking radius: {self.rlimit} arcseconds")
         print("#" * 90)
 
-    def _filter_evt_files(self):
+
+    def _process_evt_files(self):
+        """
+        Performs energy binning on clean event files and generates stacked fits image 
+        files for photometry
+        """
+        from astropy.io.fits import getdata
 
         # Filtered event files
         self._evt_files = {}
@@ -300,7 +302,7 @@ class NuAnalysis(Observation):
                 os.system(f"rm {script_id}xselect.xco")
             self._im_paths[f"{level[0]}-{level[1]}"].append(os.path.abspath(outfile))
 
-
+        # Store relevant parameters
         hdu = fits.open(outfile, uint=True)[0]
         self.stacked_data = getdata(outfile)
         self.wcs = WCS(hdu.header)
@@ -308,53 +310,50 @@ class NuAnalysis(Observation):
         self.n_cuts = self.exposure['A01'] / self._dtime
 
 
-    # Methods begin below
-
     def display_image(self, savefig=False, display=True):
         """
-        Displays an image of the stacked full exposure image for this observation with the 
+        Displays an image of the stacked image for this observation with the 
         source labeled with a circular region.
+
+        Arguments
+        ---------
+        savefig : bool
+            A flag determining whether to save the plot
+        display : bool
+            A flag determining whether to display the plot in an interactive window
         """
         
+        # Format figure
         fig = plt.figure()
-        ax = fig.add_subplot(projection=self.wcs)
-        #ax = plt.subplot(projection=self.wcs)
         fig.patch.set_facecolor('black')
-        im = ax.imshow(self.stacked_data, origin='lower', norm=matplotlib.colors.LogNorm())
+
+        # Format plot axes
+        ax = fig.add_subplot(projection=self.wcs)
         ax.set_facecolor('gray')
+        ax.tick_params(color='white', labelcolor='white')
+        ax.tick_params(axis='both', which='major', labelsize=15)
+                
+        # Plot data elements and specific formatting
+        im = ax.imshow(self.stacked_data, origin='lower', norm=matplotlib.colors.LogNorm())
+        im.axes.tick_params(color='white', labelcolor='white')
         object_region = CircleSkyRegion(center=self._source_position, radius=(self.rlimit - 50) * u.arcsecond)
         plot_region = object_region.to_pixel(self.wcs)
         plot_region.plot(ax=ax, color="yellow")
-        ax.tick_params(color='white', labelcolor='white')
-        ax.tick_params(axis='both', which='major', labelsize=15)
-        im.axes.tick_params(color='white', labelcolor='white')
-        #ax.get_coords_overlay()
+        
+        # Finalize plot parameters
         plt.grid(True)
         plt.xlabel('Right Ascension', color='white', fontsize=18)
         plt.ylabel('Declination', color='white', fontsize=18)
         plt.xlim(250, 750)
         plt.ylim(250, 750)
 
+        # IO
         if savefig:
             plt.savefig("stacked_full.pdf", dpi=1000)
         if display:
             plt.show()
 
 
-    def read_final_detections(self):
-
-        detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_poisson.tbl"))
-        if not os.path.isfile(detpath):
-            print("No final detections found!")
-            return None, False
-        
-        detect_info = Table.read(detpath, format='ipac')
-        if len(detect_info['INDEX']) == 0:
-            return detect_info, False
-        else:
-            return detect_info, True
-
-    
     def display_detections(self, savefig=False, display=True):
         """
         Displays an image of the stacked full exposure image for this observation with the 
@@ -362,9 +361,11 @@ class NuAnalysis(Observation):
         observation labeled.
         """
         
+        # Import current detections
         NoneType = type(None)
-        detections, flag = self.read_final_detections()
-        print(type(detections))
+        detections, flag, filey = self.read_final_detections()
+        
+        # If no detections are found, run the default image display method
         if type(detections) == NoneType:
             self.display_image()
             return
@@ -397,11 +398,11 @@ class NuAnalysis(Observation):
             ax.tick_params(axis='both', which='major', labelsize=15)
             im.axes.tick_params(color='white', labelcolor='white')
             #ax.get_coords_overlay(self.wcs)
-            cb = plt.colorbar(ploty, orientation='horizontal', shrink=0.5)
-            cb.set_label('Probability', color='white', fontsize=15)
-            cb.ax.xaxis.set_tick_params(color='white')
-            cb.outline.set_edgecolor('white')
-            plt.setp(plt.getp(cb.ax.axes, 'xticklabels'), color='white', fontsize=15)
+            #cb = plt.colorbar(ploty, orientation='horizontal', shrink=0.5)
+            #cb.set_label('Probability', color='white', fontsize=15)
+            #cb.ax.xaxis.set_tick_params(color='white')
+            #cb.outline.set_edgecolor('white')
+            #plt.setp(plt.getp(cb.ax.axes, 'xticklabels'), color='white', fontsize=15)
             plt.grid(True)
             plt.xlabel('Right Ascension', color='white', fontsize=18)
             plt.ylabel('Declination', color='white', fontsize=18)
@@ -414,8 +415,40 @@ class NuAnalysis(Observation):
                 plt.savefig(savepath, dpi=1000)
             if display:
                 plt.show()
+
+
+    def read_final_detections(self, detectiontype="basic"):
+        """
+        Reads in all of the detections associated with this object
+
+        Arguments
+        ---------
+        detectiontype : str
+            The type or stage of detections desired to be read in. Supported 
+            types include: ximage, poisson, and classify
         
+        Returns
+        -------
+        """
+
+        if detectiontype == "basic":
+            detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_detections.tbl"))
+            filename = f"{self._dtime}_detections.tbl"
+        if detectiontype == "poisson":
+            detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_poisson.tbl"))
+            filename = f"{self._dtime}_poisson.tbl"
+        if detectiontype == "classify":
+            detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_classify.tbl"))
+            filename = f"{self._dtime}_classify.tbl"
+        if not os.path.isfile(detpath):
+            print("No final detections found!")
+            return None, False, None
         
+        detect_info = Table.read(detpath, format='ipac')
+        if len(detect_info['INDEX']) == 0:
+            return detect_info, False, filename
+        else:
+            return detect_info, True, filename
 
 
     def read_in_phi_channels(self, pilow_file, pihi_file):
@@ -449,8 +482,8 @@ class NuAnalysis(Observation):
         for idx in range(len(low_phis)):
             pi_low = int(low_phis[idx].replace('\n', ''))
             pi_high = int(high_phis[idx].replace('\n', ''))
-            kev_low = round(chan_to_energy(float(pi_low)), 3)
-            kev_high = round(chan_to_energy(float(pi_high)), 3)
+            kev_low = round(self.ns.channel_to_energy(float(pi_low)), 3)
+            kev_high = round(self.ns.channel_to_energy(float(pi_high)), 3)
             phi_channels.append((pi_low, pi_high))
             kev_levels.append((kev_low, kev_high))
         
@@ -573,8 +606,8 @@ class NuAnalysis(Observation):
         filtered_image_files['B'] = []
         for channels in self._phi_channels:
             
-            elow = round(chan_to_energy(float(channels[0])), 3)
-            ehigh = round(chan_to_energy(float(channels[1])), 3)
+            elow = round(self.ns.channel_to_energy(float(channels[0])), 3)
+            ehigh = round(self.ns.channel_to_energy(float(channels[1])), 3)
             photometry_files = os.listdir(self._refpath + "photometry")
             
             if f"nu{self._seqid}A01_cl_{elow}to{ehigh}keV_det1.fits" not in photometry_files:
@@ -597,6 +630,7 @@ class NuAnalysis(Observation):
         This method estimates the position of the main source within the detector coordinate 
         frame.
         """
+        from astropy.io.fits import getdata
         
         # FPMA
         fpma_event_data = getdata(self._fpma_eventpath)
@@ -646,13 +680,14 @@ class NuAnalysis(Observation):
 
 
     def estimate_background(self):
+        from astropy.io.fits import getdata
         
         background_rates = {}
         effective_exposure_time = self.calculate_effective_exposure()
         for channel in self._phi_channels:
             # Fine R_90 for FPMA
-            elow = round(chan_to_energy(float(channel[0])), 3)
-            ehigh = round(chan_to_energy(float(channel[1])), 3)
+            elow = round(self.ns.channel_to_energy(float(channel[0])), 3)
+            ehigh = round(self.ns.channel_to_energy(float(channel[1])), 3)
             if f"{elow}-{ehigh}" not in background_rates:
                 background_rates[f"{elow}-{ehigh}"] = []
             det1_a_data = getdata(self._refpath + f"photometry/nu{self._seqid}A01_cl_{elow}to{ehigh}keV_det1.fits")
@@ -689,8 +724,8 @@ class NuAnalysis(Observation):
 
         for channel in self._phi_channels:
             # Fine R_90 for FPMB
-            elow = round(chan_to_energy(float(channel[0])), 3)
-            ehigh = round(chan_to_energy(float(channel[1])), 3)
+            elow = round(self.ns.channel_to_energy(float(channel[0])), 3)
+            ehigh = round(self.ns.channel_to_energy(float(channel[1])), 3)
             det1_a_data = getdata(self._refpath + f"photometry/nu{self._seqid}B01_cl_{elow}to{ehigh}keV_det1.fits")
             total_aper = RectangularAperture([180.0, 180.0], 330.0, 330.0)
             total_sums, total_error = total_aper.do_photometry(det1_a_data)
@@ -734,7 +769,7 @@ class NuAnalysis(Observation):
     def event_extraction(self):
         """
         Performs the event extraction procedures for binning the event file for this observation into 
-        time scales of ``self._dtime``.
+        time scales of self._dtime
         """
         
         # Display terminal
@@ -742,6 +777,14 @@ class NuAnalysis(Observation):
         print(f"Performing Event Extraction for SEQID: {self._seqid}")
         print(f"Time scale: {self._dtime} seconds.")
         print('#' * 90)
+
+        if f"nu{self._seqid}A01_cl.evt" not in self._evtcontents:
+            print("Core event files missing! Skipping!")
+            return 0
+        if f"nu{self._seqid}B01_cl.evt" not in self._evtcontents:
+            print("Core event files missing! Skipping!")
+            return 0
+        
         os.chdir(self._evtpath)
 
         # Iterate through all PHI channel bounds
@@ -813,18 +856,75 @@ class NuAnalysis(Observation):
         os.chdir(self._mainpath)
 
 
+    def verify_event_extraction(self):
+        """
+        This method performs a check to verify if all of the relevant evt files 
+        have been created within the event extraction phase
+        """
+
+        # Display terminal
+        print('#' * 90)
+        print(f"Verifying Event Extraction for SEQID: {self._seqid}")
+        print(f"Time scale: {self._dtime} seconds.")
+        print('#' * 90)
+
+        os.chdir(self._detpath)
+        complete_vals = []
+        
+        # Iterate through all PHI channel bounds
+        for channel in self._phi_channels:
+
+            channel_path = os.path.relpath(os.path.join(self._detpath, f"{channel[0]}-{channel[1]}_{self._dtime}-{self._snr}"))
+            if not os.path.isdir(channel_path):
+                complete_vals.append(0)
+            if os.path.isdir(channel_path):
+                evt_files = glob.glob(os.path.join(channel_path, "*.evt"))
+                trim_files = []
+                for file in evt_files:
+                    trim_files.append(file.replace(channel_path, '').replace('/', ''))
+
+                # PASS 1 verification
+                count = 0
+                for idx in self._time_bins[0]:
+                    test_file = f"nu_{self._time_bins[0][idx][0]}-{self._time_bins[0][idx][1]}.evt"
+                    if test_file in trim_files:
+                        count += 1
+                    
+                # PASS 2 verification
+                for idx in self._time_bins[1]:
+                    test_file = f"nu_{self._time_bins[1][idx][0]}-{self._time_bins[1][idx][1]}.evt"
+                    if test_file in trim_files:
+                        count += 1
+
+                percent = round(count / (len(self._time_bins[0]) + len(self._time_bins[1])), 2)
+                print(f"Percent of evt files properly processed: {percent}")
+                complete_vals.append(round(percent, 4))
+
+        return complete_vals
+
+
+
+
     def sliding_cell_detection(self):
         """
         The sliding cell detection call on the temporal binned data.
         """
+        from astropy.io.fits import getdata
 
         # Display terminal
         print('#' * 90)
         print(f"Performing Sliding Cell Source Detection Search for SEQID: {self._seqid}")
         print(f"Time scale: {self._dtime} seconds.")
-        print(f"Optimized Source Radius: {self.rlimit}")
+        #print(f"Optimized Source Radius: {self.rlimit}")
         print(f"Source Position: {self._source_pix_coordinates[0][0]}, {self._source_pix_coordinates[0][1]}")
         print('#' * 90)
+
+        #if f"{self._dtime}_flag.txt" in self._evtcontents:
+        #    print("Old detection pass detected! Skipping!")
+        #    return 0
+        if f"{self._dtime}_ximage_flag.txt" in self._evtcontents:
+            print("New detection pass detected! Skipping!")
+            return 0
         
         for channel in self._phi_channels:
             
@@ -855,8 +955,8 @@ class NuAnalysis(Observation):
         
         # Create completion flag
         os.chdir(self._evtpath)
-        with open(f"{self._dtime}_flag.txt", 'w') as file:
-            file.write("DONE")
+        with open(f"{self._dtime}_ximage_flag.txt", 'w') as file:
+            file.write("PROCESSING COMPLETE")
         os.chdir(self._mainpath)
 
     
@@ -887,6 +987,11 @@ class NuAnalysis(Observation):
                     script.write("exit\n")
                 os.system(f"ximage @src_merge.xco > {logfile}")
                 os.system(f"rm -r -f src_merge.xco")
+        
+        # Create completion flag
+        os.chdir(self._evtpath)
+        with open(f"{self._dtime}_merging_flag.txt", 'w') as file:
+            file.write("PROCESSING COMPLETE")
         os.chdir(self._mainpath)
 
 
@@ -901,6 +1006,9 @@ class NuAnalysis(Observation):
         
 
     def detection_summary(self):
+        """
+        
+        """
         for channel in self._phi_channels:
             detections = self.detection_dir_processing(channel)
             if detections == None:
@@ -1056,7 +1164,6 @@ class NuAnalysis(Observation):
             dec = detect_info["DEC"][int(i) - 1]
             detect_position = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg), frame='fk5')
             if self._source_position.separation(detect_position).arcsec > self.rlimit:
-                print(self._source_position.separation(detect_position).arcsec)
                 for key in detect_info:
                     trimmed_detect_info[key].append(detect_info[key][int(i) - 1])
         return trimmed_detect_info
@@ -1100,7 +1207,6 @@ class NuAnalysis(Observation):
     def write_net_detections(self):
 
         print("Merging all valid detections")
-        self.detection_merging()
 
         for channel in self._phi_channels:
             trimmed_all_info = self.detection_dir_processing(channel)
@@ -1131,6 +1237,12 @@ class NuAnalysis(Observation):
             for key in trimmed_all_info:
                 detect_table[key] = trimmed_all_info[key]
             detect_table.write(os.path.join(self._detpath, f"{self._dtime}_detections.tbl"), format='ipac', overwrite=True)
+        
+        # Create completion flag
+        os.chdir(self._evtpath)
+        with open(f"{self._dtime}_netdetection_flag.txt", 'w') as file:
+            file.write("PROCESSING COMPLETE")
+        os.chdir(self._mainpath)
 
 
 
@@ -1193,6 +1305,9 @@ class NuAnalysis(Observation):
     
 
     def list_product_files(self):
+        """
+        Returns all of the product files 
+        """
         all_files = []
         for channel in self._phi_channels:
             files = glob.glob(self._refpath + f"products/{channel[0]}_{channel[1]}-{self._dtime}_{self._snr}/**/*.flc", recursive=True)
@@ -1269,7 +1384,7 @@ class NuAnalysis(Observation):
 
     
     def acquire_event_curves(self):
-        detections, flag = self.read_final_detections()
+        detections, flag, filey = self.read_final_detections()
         if len(detections["INDEX"]) != 0:
             for idx in range(len(detections['INDEX'])):
                 ids = detections['INDEX'][idx]
@@ -1478,7 +1593,7 @@ class NuAnalysis(Observation):
         plt.show()
         plt.close()
 
-        detections, flag = self.read_final_detections()
+        detections, flag, filey = self.read_final_detections()
         if not flag:
             for idx in range(len(detections['INDEX'])):
                 for interval in self.time_bins[0]:
@@ -1507,6 +1622,7 @@ class NuAnalysis(Observation):
 
 
     def recalculate_poisson(self):
+        from astropy.io.fits import getdata
         filepath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_detections.tbl"))
         if not os.path.isfile(filepath):
             return 
@@ -1519,6 +1635,8 @@ class NuAnalysis(Observation):
         rejected_xpix = []
         rejected_ypix = []
         self.adata = getdata(self._fpma_eventpath)
+        #coords = self.collect_det1coords()
+        #print(coords)
         for idx in tqdm(range(len(data_table['INDEX']))):
             x_pix = float(data_table['XPIX'][idx])
             y_pix = float(data_table['YPIX'][idx])
@@ -1537,11 +1655,13 @@ class NuAnalysis(Observation):
                 rejected_xpix.append(x_pix)
                 rejected_ypix.append(y_pix)
                 continue
+            #det_x = coords[str(idx)][0]
+            #det_y = coords[str(idx)][1]
             
             blow = int(data_table['BOUND'][idx].split('-')[0])
             bhigh = int(data_table['BOUND'][idx].split('-')[1])
-            elow = round(chan_to_energy(float(blow)), 3)
-            ehigh = round(chan_to_energy(float(bhigh)), 3)
+            elow = round(self.ns.channel_to_energy(float(blow)), 3)
+            ehigh = round(self.ns.channel_to_energy(float(bhigh)), 3)
             tlow = data_table['TSTART'][idx]
             thigh = data_table['TSTOP'][idx]
             datafile = os.path.relpath(os.path.join(self._detpath, f"{blow}-{bhigh}_{self._dtime}-{self._snr}/nu_{tlow}-{thigh}.evt"))
@@ -1607,6 +1727,12 @@ class NuAnalysis(Observation):
         #plt.ylim(250, 750)
         #plt.show()
 
+        # Create completion flag
+        os.chdir(self._evtpath)
+        with open(f"{self._dtime}_poisson_flag.txt", 'w') as file:
+            file.write("PROCESSING COMPLETE")
+        os.chdir(self._mainpath)
+
 
     def calculate_effective_time(self, data, evt=True):
         
@@ -1635,7 +1761,7 @@ class NuAnalysis(Observation):
     
 
     def detection_lightcurve(self, xpix, ypix, low_pi, high_pi, tstart, tstop):
-        
+        from astropy.io.fits import getdata
         dt = 5000
         evt_data = getdata(self._refpath + f"{low_pi}-{high_pi}.evt")
         times = []
@@ -1751,7 +1877,7 @@ class NuAnalysis(Observation):
         print("#" * 90)
         print(f"Measuring the persistence value for poisson verified sources.")
         print("#" * 90)
-        detections, flag = self.read_final_detections()
+        detections, flag, filey = self.read_final_detections()
         
         NoneType = type(None)
         if type(detections) == NoneType:
@@ -1786,10 +1912,200 @@ class NuAnalysis(Observation):
         detect_table.write(os.path.join(self._detpath, f"{self._dtime}_classify.tbl"), format='ipac', overwrite=True)
 
 
-
-
+    def determine_bright(self):
+        """
+        Checks if the source is bright
+        """
+        from astropy.io.fits import getdata
+        fpma_data = getdata(self._fpma_eventpath)
+        fpmb_data = getdata(self._fpmb_eventpath)
+        
+        times_fpma = []
+        fpma_x_center = self._source_pix_coordinates[0][0]
+        fpma_y_center = self._source_pix_coordinates[0][1]
+        for datum in fpma_data:
+            x = float(datum[13])
+            y = float(datum[14])
+            if np.sqrt((x - fpma_x_center) ** 2 + (y - fpma_y_center)**2) <= 30:
+                times_fpma.append(float(datum[0]))
+        if len(times_fpma) == 0:
+            return 0
+        totstart = np.min(times_fpma)
+        totstop = np.max(times_fpma)
+        lc_bins = np.arange(float(totstart), float(totstop), 1)
+        lc, bines = np.histogram(times_fpma, lc_bins)
+        t = []
+        count = 0
+        for idx, l in enumerate(lc):
+            t.append(idx)
+            if l != 0:
+                count += 1
+        t = np.array(t)
+        if len(lc) == 0:
+            return 0
+        return max(lc)
         
 
 
+    def set_straycat(self):
+        """
+        Checks if current source has a known straycat observation
+        """
+        pass
+        
 
 
+    def straycat_verification(self):
+        """
+        Performs detection cross referencing with known straycat regions
+        """
+        pass
+
+
+    def sky_to_detector(self, ra, dec, mod='A'):
+        """
+        Calculate the position of an object in detector coordinates from sky 
+        coordinates using ``nuskytodet``
+
+        Parameters
+        ----------
+        ra : float
+            The RA of the object
+
+        dec : float
+            The dec of the object
+
+        Returns
+        """
+
+        os.chdir(self._evdir)
+
+        mastaspectfile = f"nu{self.seqid}_mast.fits"
+        attfile = f"nu{self.seqid}_att.fits"
+        outfile = f"nu{self.seqid}_detpos.fits"
+
+        command_string = f"nuskytodet instrument=FPMA mastaspectfile={mastaspectfile} "
+        command_string += f"attfile={attfile} pntra={ra} pntdec={dec} skydetfile={outfile} "
+        command_string += f"clobber=yes"
+        os.system(command_string)
+        os.chdir(self._path)
+        return os.path.abspath(os.path.join("event_cl", outfile))
+
+
+    def convert_detection_coords(self):
+
+        detections, flag, filename = self.read_final_detections()
+        
+        NoneType = type(None)
+        if type(detections) == NoneType:
+            return
+        if len(detections["INDEX"]) == 0:
+            with open(os.path.join(self._detpath, filename.replace(".tbl", "_detc.txt")), 'w') as file:
+                    file.write(f" ")
+            return
+        
+        ras = detections["RA"]
+        decs = detections["DEC"]
+        ra_deg = []
+        dec_deg = []
+        for idx in range(len(detections["INDEX"])):
+            detect_position = SkyCoord(f"{ras[idx]} {decs[idx]}", unit=(u.hourangle, u.deg), frame='fk5')
+            ra_deg.append(detect_position.ra.deg)
+            dec_deg.append(detect_position.dec.deg)
+        for idx in range(len(detections["INDEX"][0:5])):
+            outfile = self.sky_to_detector(ra_deg[idx], dec_deg[idx])
+            data = fits.getdata(outfile)
+            mean_detx = []
+            mean_dety = []
+            for datum in data:
+                mean_detx.append(float(datum[1]))
+                mean_dety.append(float(datum[2]))
+            detx = np.mean(mean_detx)
+            dety = np.mean(mean_dety)
+            if not os.path.isfile(os.path.join(self._detpath, filename.replace(".tbl", "_detc.txt"))):
+                with open(os.path.join(self._detpath, filename.replace(".tbl", "_detc.txt")), 'w') as file:
+                    file.write(f"{idx} {detx} {dety}\n")
+            else:
+                with open(os.path.join(self._detpath, filename.replace(".tbl", "_detc.txt")), 'a') as file:
+                    file.write(f"{idx} {detx} {dety}\n")
+
+        # Create completion flag
+        os.chdir(self._evtpath)
+        with open(f"{self._dtime}_det1convert_flag.txt", 'w') as file:
+            file.write("PROCESSING COMPLETE")
+        os.chdir(self._mainpath)
+            
+
+    def display_detections_det(self, savefig=False, display=True):
+        """
+        Displays an image of the stacked full exposure image for this observation with the 
+        source labeled with a circular region and all observations for this specific 
+        observation labeled.
+        """
+        
+        # Import current detections
+        NoneType = type(None)
+        detections, flag, filey = self.read_final_detections()
+        
+        # If no detections are found, run the default image display method
+        if type(detections) == NoneType:
+            self.display_image()
+            return
+        if len(detections["INDEX"]) == 0:
+            self.display_image()
+        else:
+            fig = plt.figure()
+            ax = fig.add_subplot(projection=self.wcs)
+            ax.set_facecolor('gray')
+            #ax = plt.subplot(projection=self.wcs)
+            fig.patch.set_facecolor('black')
+            im = ax.imshow(self.stacked_data, origin='lower', norm=matplotlib.colors.LogNorm())
+            circle = Point(self._source_pix_coordinates[0][0], self._source_pix_coordinates[0][1]).buffer(self.rlimit / 2.46, resolution=1000)
+            plot_polygon(circle, ax=ax, add_points=False, color="yellow")
+            #object_region = CircleSkyRegion(center=self._source_position, radius=self.rlimit*u.arcsecond)
+            #plot_region = object_region.to_pixel(self.wcs)
+            #plot_region.plot(ax=ax, color="green")
+
+            # Loop through detections and plot
+            
+            x_pix = detections['XPIX']
+            x_pi = [float(pix) for pix in x_pix]
+            y_pix = detections['YPIX']
+            y_pi = [float(pix) for pix in y_pix]
+            probs = np.array(detections['PROB'])
+            probs_pi = [float(prob) for prob in probs]
+
+            ploty = ax.scatter(x_pi, y_pi, marker="d", c=probs_pi, s=80, linewidths=1, edgecolors= "black", cmap='spring', norm=matplotlib.colors.LogNorm())               
+            ax.tick_params(color='white', labelcolor='white')
+            ax.tick_params(axis='both', which='major', labelsize=15)
+            im.axes.tick_params(color='white', labelcolor='white')
+            #ax.get_coords_overlay(self.wcs)
+            #cb = plt.colorbar(ploty, orientation='horizontal', shrink=0.5)
+            #cb.set_label('Probability', color='white', fontsize=15)
+            #cb.ax.xaxis.set_tick_params(color='white')
+            #cb.outline.set_edgecolor('white')
+            #plt.setp(plt.getp(cb.ax.axes, 'xticklabels'), color='white', fontsize=15)
+            plt.grid(True)
+            plt.xlabel('Right Ascension', color='white', fontsize=18)
+            plt.ylabel('Declination', color='white', fontsize=18)
+            plt.xlim(250, 750)
+            plt.ylim(250, 750)
+            
+
+            if savefig:
+                savepath = os.path.relpath(os.path.join(self._outpath, "final_detections.pdf"))
+                plt.savefig(savepath, dpi=1000)
+            if display:
+                plt.show()
+
+
+    def collect_det1coords(self):
+        with open(os.path.join(self._detpath, "5000_detections_detc.txt")) as file:
+            data = file.readlines()
+        coords = {}
+        for datum in data:
+            parts = datum.split()
+            detx = float(parts[1])
+            dety = float(parts[2])
+            coords[parts[0]] = (detx, dety)
+        return coords

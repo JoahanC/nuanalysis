@@ -9,15 +9,12 @@ def generate_directory(path, overwrite=False):
     if os.path.isdir(path):
         if overwrite:
             clear_directory(path)
-        #else:
-        #    print("Please enable overwriting to remove this directory!")
     else:
         os.mkdir(path)
 
 
 def clear_directory(path):
     if os.path.isdir(path):
-        #print(os.listdir(path))
         for file in os.listdir(path):
             os.remove(f"{path}/{file}")
     else:
@@ -119,7 +116,7 @@ def read_detection_dir(path):
 
 def generate_gti_files(path, tstart, tstop):
     """
-    Creates a Good Time Interval (GTI) file for temporal filtering calls using XSelect and 
+    Creates a Good Time Interval (GTI) file for temporal filtering calls using xselect and 
     nuproducts.
 
     Parameters
@@ -145,20 +142,19 @@ def generate_gti_files(path, tstart, tstop):
     subprocess.run(["rm", "xselect.xco"], cwd=path, capture_output=False)
 
 
-def chan_to_energy(chan):
-    return chan * 0.04 + 1.6
-
-
 def remove_tmp_folders(path):
+    """
+    Removes all of the nuproducts temporary files in a given directory 
+    """
     tmp_dirs = glob.glob(path + "*tmp_nuproducts")
     for dir in tmp_dirs:
         subprocess.run(["rm", "-rf", dir])
 
 
 def evt_to_fits_image(infile, outfile, dir, elow, ehigh, sessionid, usrgti=False):
-    '''
+    """
     Helper script to generate the xselect commands to make an image in a given NuSTAR range
-    '''
+    """
 
 
     xsel=open(f"{sessionid}xselect.xco","w")
@@ -189,9 +185,9 @@ def evt_to_fits_image(infile, outfile, dir, elow, ehigh, sessionid, usrgti=False
 
 
 def evt_xselect_filter(infile, outfile, dir, elow, ehigh, sessionid, usrgti=False):
-    '''
+    """
     Helper script to generate the xselect commands to make an image in a given NuSTAR range
-    '''
+    """
 
 
     xsel=open(f"{sessionid}xselect.xco","w")
@@ -224,6 +220,9 @@ def evt_xselect_filter(infile, outfile, dir, elow, ehigh, sessionid, usrgti=Fals
 
 
 def generate_random_id():
+    """
+    Generates a float random value utilizing the product of four random numbers.
+    """
     n1 = random.random()
     n2 = random.random()
     n3 = random.random()
