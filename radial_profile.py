@@ -289,7 +289,10 @@ def optimize_radius_snr(rind, rad_profile, radial_err, psf_profile,
 
         src_cts += src[rtest] * area
         bgd_cts += bgd[rtest] * area
-        snr = src_cts / np.sqrt(src_cts + bgd_cts)
+        if np.sqrt(src_cts + bgd_cts) == 0:
+            snr = 0
+        if np.sqrt(src_cts + bgd_cts) != 0:
+            snr = src_cts / np.sqrt(src_cts + bgd_cts)
         if snr > old_snr:
             old_snr = snr
             best_radius = rtest

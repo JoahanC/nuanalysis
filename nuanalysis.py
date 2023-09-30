@@ -5,34 +5,55 @@ Main class for performing X-ray FOV source detections on NuSTAR observations.
 import os
 import subprocess
 import glob
-from tqdm import tqdm
-import numpy as np
 import matplotlib
+import radial_profile
+import numpy as np
 import matplotlib.pyplot as plt
 
 from shapely.geometry import Point
 from shapely.plotting import plot_polygon
+from astropy.io import fits
+from scipy.stats import poisson_means_test
+from tqdm import tqdm
 
 from nustar import *
 from helpers import *
 from wrappers import *
-from astropy.io import fits
+from photometry import *
 
 from astropy import units as u
 from astropy.wcs import WCS
 from astropy.table import Table
-from tqdm import tqdm
-import radial_profile
 from astropy.coordinates import SkyCoord
-from regions import CircleSkyRegion
 from astropy.wcs.utils import skycoord_to_pixel, pixel_to_skycoord
+from regions import CircleSkyRegion
 from photutils.aperture import RectangularAperture, CircularAperture, CircularAnnulus
-from photometry import *
-from scipy.stats import poisson_means_test
+
+
 
 class NuAnalysis(Observation):
     """
     This class defines an object to be used for performing analysis on a NuSTAR observation.
+    
+    Arguments
+    ---------
+    
+    dtime : float
+        The characteristic timescale to perform analysis and binning
+    snr_threshold : float
+        The snr limit that is used in ximage calls during slidecell detection routines
+    low_phi_file : str
+        The file defining the lower bounds for PI channel bands
+    high_phi_file : str
+        The file defining the higher bounds for PI channel bands
+    path : str
+        The high level directory pointing to the seqid directory 
+    seqid : str
+        The sequence id used to label this observation within NuSTAR's catalog
+    bifrost : bool
+        A flag indicating if analysis is being performed on the bifrost server
+    object_name : str
+        The object_name of the observation
     """
 
     def __init__(self, dtime, snr_threshold, low_phi_file, high_phi_file, 
@@ -600,7 +621,9 @@ class NuAnalysis(Observation):
 
 
     def generate_detector_images(self):
-        
+        """
+        Generates fits images which are in DET1 coordinates for specified energy ranges.
+        """
         filtered_image_files = {}
         filtered_image_files['A'] = []
         filtered_image_files['B'] = []
@@ -608,20 +631,20 @@ class NuAnalysis(Observation):
             
             elow = round(self.ns.channel_to_energy(float(channels[0])), 3)
             ehigh = round(self.ns.channel_to_energy(float(channels[1])), 3)
-            photometry_files = os.listdir(self._refpath + "photometry")
+            photometry_files = os.listdir(self._impath)
             
             if f"nu{self._seqid}A01_cl_{elow}to{ehigh}keV_det1.fits" not in photometry_files:
-                a_file = make_det1_image(self.evdir + f"nu{self._seqid}A01_cl.evt", 
+                a_file = make_det1_image(os.path.join(self._evtpath, f"nu{self._seqid}A01_cl.evt"), 
                                 elow=elow,
                                 ehigh=ehigh,
-                                outpath=self._refpath + "photometry")
+                                outpath=self._impath)
                 filtered_image_files['A'].append(a_file)
             
             if f"nu{self._seqid}B01_cl_{elow}to{ehigh}keV_det1.fits" not in photometry_files:
-                b_file = make_det1_image(self.evdir + f"nu{self._seqid}B01_cl.evt", 
+                b_file = make_det1_image(os.path.join(self._evtpath, f"nu{self._seqid}B01_cl.evt"), 
                                 elow=elow,
                                 ehigh=ehigh,
-                                outpath=self._refpath + "photometry")
+                                outpath=self._impath)
                 filtered_image_files['B'].append(b_file)
     
 
@@ -1623,40 +1646,50 @@ class NuAnalysis(Observation):
 
     def recalculate_poisson(self):
         from astropy.io.fits import getdata
+        
+        
+        # Check if poisson has been done
+        if os.path.isfile(os.path.join(self._evtpath, f"{self._dtime}_poisson_flag.txt")):
+            return
+        # Check if detections exist
         filepath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_detections.tbl"))
         if not os.path.isfile(filepath):
+            # Return completion flag, there are no detections to do poisson stats on
+            os.chdir(self._evtpath)
+            with open(f"{self._dtime}_poisson_flag.txt", 'w') as file:
+                file.write("PROCESSING COMPLETE")
+            os.chdir(self._mainpath)
             return 
+        
+        # Read in detections
         data_table = Table.read(filepath, format='ipac')
         n_obj = len(data_table['INDEX'])
         passing = 0
         valid_indices = []
         net_counts = []
         pvals = []
-        rejected_xpix = []
-        rejected_ypix = []
+        det_xpix = []
+        det_ypix = []
+        
         self.adata = getdata(self._fpma_eventpath)
-        #coords = self.collect_det1coords()
-        #print(coords)
+
         for idx in tqdm(range(len(data_table['INDEX']))):
-            x_pix = float(data_table['XPIX'][idx])
-            y_pix = float(data_table['YPIX'][idx])
-            x_vals = []
-            y_vals = []
-            for datum in self.adata:
-                x = datum[13]
-                y = datum[14]
-                if x > x_pix - 1 and x < x_pix + 1:
-                    if y > y_pix - 1 and y < y_pix + 1:
-                        x_vals.append(datum[9])
-                        y_vals.append(datum[10])
-            det_x = np.mean(x_vals)
-            det_y = np.mean(y_vals)
-            if np.isnan(det_x):
-                rejected_xpix.append(x_pix)
-                rejected_ypix.append(y_pix)
-                continue
-            #det_x = coords[str(idx)][0]
-            #det_y = coords[str(idx)][1]
+            
+            if len(data_table['INDEX']) > 1000:
+                return
+            detect_position = SkyCoord(f"{data_table['RA'][idx]} {data_table['DEC'][idx]}", unit=(u.hourangle, u.deg), frame='fk5')
+            det_x = detect_position.ra.deg
+            det_y = detect_position.dec.deg
+            outfile = self.sky_to_detector(detect_position.ra.deg, detect_position.dec.deg)
+            data = fits.getdata(outfile)
+            mean_detx = []
+            mean_dety = []
+            for datum in data:
+                mean_detx.append(float(datum[1]))
+                mean_dety.append(float(datum[2]))
+            det_x = np.mean(mean_detx)
+            det_y = np.mean(mean_dety)
+
             
             blow = int(data_table['BOUND'][idx].split('-')[0])
             bhigh = int(data_table['BOUND'][idx].split('-')[1])
@@ -1672,7 +1705,7 @@ class NuAnalysis(Observation):
             generate_directory(outpath)
             
             src_img = make_det1_image(datafile, elow=elow, ehigh=ehigh, outpath=outpath)
-            det1_data = getdata(src_img)
+            det1_data = getdata(os.path.abspath(src_img))
             src_area = calculate_source_area(det1_data, det_x, det_y, 10) * 6.0516 * u.arcsecond * u.arcsecond
             bkg_area = calculate_background_area(det1_data, det_x, det_y, 10) * 6.0516 * u.arcsecond * u.arcsecond
 
@@ -1680,10 +1713,17 @@ class NuAnalysis(Observation):
             bk_counts = bkg_counts(det1_data, det_x, det_y, 10)
             src_predict = bk_counts * src_area / bkg_area
             
+            if np.isnan(actual_counts.value):
+                continue    
+            if effective_exposure_time <= 0:
+                continue
+            
             res = poisson_means_test(int(actual_counts.value), effective_exposure_time, int(src_predict.value), effective_exposure_time)
             if res.pvalue < 0.001:
                 passing += 1
                 valid_indices.append(idx)
+                det_xpix.append(det_x)
+                det_ypix.append(det_y)
                 pvals.append(res.pvalue)
                 net_counts.append(actual_counts)
         if n_obj != 0:
@@ -1698,6 +1738,8 @@ class NuAnalysis(Observation):
         
         filtered_detections["PVAL"] = pvals
         filtered_detections["NETCOUNTS"] = net_counts
+        filtered_detections["DET1X"] = det_xpix
+        filtered_detections["DET1Y"] = det_ypix
         
         detect_table = Table()
         for key in filtered_detections:
@@ -1977,7 +2019,7 @@ class NuAnalysis(Observation):
 
         Returns
         """
-
+        cur_path = os.getcwd()
         os.chdir(self._evdir)
 
         mastaspectfile = f"nu{self.seqid}_mast.fits"
@@ -1986,9 +2028,9 @@ class NuAnalysis(Observation):
 
         command_string = f"nuskytodet instrument=FPMA mastaspectfile={mastaspectfile} "
         command_string += f"attfile={attfile} pntra={ra} pntdec={dec} skydetfile={outfile} "
-        command_string += f"clobber=yes"
+        command_string += f"clobber=yes >/dev/null 2>&1"
         os.system(command_string)
-        os.chdir(self._path)
+        os.chdir(cur_path)
         return os.path.abspath(os.path.join("event_cl", outfile))
 
 
@@ -2109,3 +2151,112 @@ class NuAnalysis(Observation):
             dety = float(parts[2])
             coords[parts[0]] = (detx, dety)
         return coords
+    
+    
+    def straycat_removal(self):
+        """
+        Checks if this Observation was analyzed in any of the StrayCats surveys 
+        and flags detections which where located within any identified regions.
+        """
+        from astropy.io.fits import getdata
+        
+        with open("/Users/jcj/Documents/research/nustar/nuanalysis/straydir.txt") as file:
+            data = file.readlines()
+            
+        for line in data:
+            strayinfo = line.split()
+            if strayinfo[1] == self._seqid:
+                reg_file = os.path.join("./Volumes/data_ssd_1/bifrost_data/straycat/", strayinfo[0])
+                print(f"Match found! {strayinfo[1]}")
+                self.generate_detector_images()
+                det1_data = getdata(os.path.join(self._impath, "nu80102048008A01_cl_2.96to78.96keV_det1.fits"))
+                
+                # Import current detections
+                NoneType = type(None)
+                detections, flag, filey = self.read_final_detections()
+                
+                # If no detections are found, run the default image display method
+                if type(detections) == NoneType:
+                    #self.display_image()
+                    return
+                if len(detections["INDEX"]) == 0:
+                    #self.display_image()
+                    return
+                else:
+                    fig = plt.figure()
+                    ax = fig.add_subplot()
+                    ax.set_facecolor('white')
+                    fig.patch.set_facecolor('black')
+                    im = ax.imshow(det1_data, origin='lower', norm=matplotlib.colors.LogNorm())
+                    circle = Point(self._source_pix_coordinates[0][0], self._source_pix_coordinates[0][1]).buffer(self.rlimit / 2.46, resolution=1000)
+                    plot_polygon(circle, ax=ax, add_points=False, color="yellow")
+
+                    # Loop through detections and plot
+                    
+                    
+                    ax.tick_params(color='white', labelcolor='white')
+                    ax.tick_params(axis='both', which='major', labelsize=15)
+                    im.axes.tick_params(color='white', labelcolor='white')
+                    
+                    plt.grid(True)
+                    plt.xlabel('X Pixel', color='white', fontsize=18)
+                    plt.ylabel('Y Pixel', color='white', fontsize=18)
+                    #plt.xlim(250, 750)
+                    #plt.ylim(250, 750)
+                    
+
+                    plt.show()
+                    
+                    
+    def convert_to_det1(self):
+        
+        # Display terminal
+        print('#' * 90)
+        print(f"Converting Poisson Detections to Det1 for SEQID: {self._seqid}")
+        print(f"Time scale: {self._dtime} seconds.")
+        print(f"Source Position: {self._source_pix_coordinates[0][0]}, {self._source_pix_coordinates[0][1]}")
+        print('#' * 90)
+        
+        detections, flag, filename = self.read_final_detections(detectiontype="poisson")
+        
+        NoneType = type(None)
+        if type(detections) == NoneType:
+            return
+        if len(detections["INDEX"]) == 0:
+            # Create completion flag
+            os.chdir(self._evtpath)
+            with open(f"{self._dtime}_det1poisson_flag.txt", 'w') as file:
+                file.write("PROCESSING COMPLETE")
+            os.chdir(self._mainpath)
+            return
+        
+        detx_list = []
+        dety_list = []
+        for idx in tqdm(range(len(detections["INDEX"]))):
+            ra = detections["RA"][idx]
+            dec = detections["DEC"][idx]
+            detect_position = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg), frame='fk5')
+            ra = detect_position.ra.deg
+            dec = detect_position.dec.deg
+            outfile = self.sky_to_detector(ra, dec)
+            data = fits.getdata(outfile)
+            mean_detx = []
+            mean_dety = []
+            for datum in data:
+                mean_detx.append(float(datum[1]))
+                mean_dety.append(float(datum[2]))
+            detx = np.mean(mean_detx)
+            dety = np.mean(mean_dety)
+            detx_list.append(detx)
+            dety_list.append(dety)
+            os.remove(outfile)
+        detections["DET1X"] = detx_list
+        detections["DET1Y"] = dety_list
+        detections.write(os.path.join(self._detpath, f"{self._dtime}_poisson_det1.tbl"), format='ipac', overwrite=True)
+        
+        # Create completion flag
+        os.chdir(self._evtpath)
+        with open(f"{self._dtime}_det1poisson_flag.txt", 'w') as file:
+            file.write("PROCESSING COMPLETE")
+        os.chdir(self._mainpath)
+        return

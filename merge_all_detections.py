@@ -15,7 +15,7 @@ import radial_profile
 from astropy.coordinates import SkyCoord
 from regions import CircleSkyRegion
 
-cols = ['INDEX', 'COUNTS', 'XPIX', 'YPIX', 'VIGCOR', 'ERR', 'HBOX', 'PROB', 'SNR', 'TSTART', 'TSTOP', 'COUNTSERR', 'SEP']
+cols = ['INDEX', 'COUNTS', 'XPIX', 'YPIX', 'VIGCOR', 'ERR', 'HBOX', 'PROB', 'SNR', 'TSTART', 'TSTOP', 'COUNTSERR', 'SEP']#, 'DET1X', 'DET1Y']
 scols = ['RA', 'DEC', 'SEQID', 'BOUND']
 basepath = "/Volumes/data_ssd_1/bifrost_data/**/**/detections/500_poisson.tbl"
 table_files = glob.glob(basepath)
@@ -33,4 +33,4 @@ for file in tqdm(table_files[1:]):
         continue
     total_table = vstack([total_table, data_table])
 print(len(total_table['RA']))
-total_table.write("poisson_1000_september.tbl", format='ipac', overwrite=True)
+total_table.write("poisson_500_raw.tbl", format='ipac', overwrite=True)

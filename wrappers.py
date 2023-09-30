@@ -835,7 +835,6 @@ def make_det1_image(infile, elow = 3, ehigh = 20, clobber=True, outpath=False):
     
     # Generate outfile name
     outfile = os.path.join(outdir, sname+f'_{elow}to{ehigh}keV_det1.fits')
-       
     if (os.path.exists(outfile)):
         if clobber is True:
             os.system("rm "+outfile)
