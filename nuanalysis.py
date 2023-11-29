@@ -2095,22 +2095,6 @@ class NuAnalysis(Observation):
         if len(lc) == 0:
             return 0
         return max(lc)
-        
-
-
-    def set_straycat(self):
-        """
-        Checks if current source has a known straycat observation
-        """
-        pass
-        
-
-
-    def straycat_verification(self):
-        """
-        Performs detection cross referencing with known straycat regions
-        """
-        pass
 
 
     def sky_to_detector(self, ra, dec, mod='A'):
