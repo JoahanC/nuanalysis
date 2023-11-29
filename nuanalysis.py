@@ -100,7 +100,7 @@ class NuAnalysis(Observation):
         self._snr = snr_threshold
         self._dtime = dtime
         self._clean = clean
-        self._phi_channels, self._kev_levels = self.read_in_phi_channels(self._low_phi_file, 
+        self._phi_channels, self._kev_levels = self._read_in_phi_channels(self._low_phi_file, 
                                                                          self._high_phi_file)
         
         # Check for reprocessing
@@ -158,8 +158,8 @@ class NuAnalysis(Observation):
             # Buffer radius to reduce main source polluting detections
             if self.rlimit == 0:
                 self.rlimit = 120
-            if self.rlimit <= 90:
-                self.rlimit = 90
+            #if self.rlimit <= 90:
+            #    self.rlimit = 90
             
             # Initialize detection parameters
             self._time_bins = self.generate_timebins()
@@ -224,255 +224,7 @@ class NuAnalysis(Observation):
     
     # Initialization methods below
 
-    def _display_terminal(self):
-        print("#" * 90)
-        print(f"Succesfully read in {self._object}: {self._seqid}")
-        print(f"Main Source located: ({self._source_pix_coordinates[0][0]}, {self._source_pix_coordinates[0][1]})")
-        #print(f"Masking radius: {self.rlimit} arcseconds")
-        print("#" * 90)
-
-
-    def _process_evt_files(self):
-        """
-        Performs energy binning on clean event files and generates stacked fits image 
-        files for photometry
-        """
-        from astropy.io.fits import getdata
-
-        # Filtered event files
-        self._evt_files = {}
-
-        # keV level focused FPMA evt files
-        for level in self._kev_levels:
-            infiles = os.path.relpath(self._fpma_eventpath)
-            evpath = os.path.relpath(self._evtpath)
-            outfile = os.path.join(evpath, f"nu{self._seqid}_{level[0]}-{level[1]}_keV_A01.evt")
-            if f"nu{self._seqid}_{level[0]}-{level[1]}_keV_A01.evt" not in self._evtcontents:
-                print(f"Generating nu{self._seqid}_{level[0]}-{level[1]}_keV_A01.evt")
-                script_id = generate_random_id()
-                evt_xselect_filter(infiles, outfile, '.', level[0], level[1], script_id)
-                os.system(f"xselect @{script_id}xselect.xco > {os.path.join(os.path.relpath(self._logpath), f'xselect_{level[0]}-{level[1]}_keV_A01_evt')}.log")
-                os.system(f"rm {script_id}xselect.xco")
-            self._evt_files[f"{level[0]}-{level[1]}"] = [os.path.abspath(outfile)]
-
-        # keV level focused FPMB evt files
-        for level in self._kev_levels:
-            infiles = os.path.relpath(self._fpmb_eventpath)
-            evpath = os.path.relpath(self._evtpath)
-            outfile = os.path.join(evpath, f"nu{self._seqid}_{level[0]}-{level[1]}_keV_B01.evt")
-            if f"nu{self._seqid}_{level[0]}-{level[1]}_keV_B01.evt" not in self._evtcontents:
-                print(f"Generating nu{self._seqid}_{level[0]}-{level[1]}_keV_B01.evt")
-                script_id = generate_random_id()
-                evt_xselect_filter(infiles, outfile, '.', level[0], level[1], script_id)
-                os.system(f"xselect @{script_id}xselect.xco > {os.path.join(os.path.relpath(self._logpath), f'xselect_{level[0]}-{level[1]}_keV_B01_evt')}.log")
-                os.system(f"rm {script_id}xselect.xco")
-            self._evt_files[f"{level[0]}-{level[1]}"].append(os.path.abspath(outfile))
-
-        # keV level focused stacked evt files
-        for level in self._kev_levels:
-            infiles = f"{os.path.relpath(self._fpma_eventpath)} , {os.path.relpath(self._fpmb_eventpath)}"
-            evpath = os.path.relpath(self._evtpath)
-            outfile = os.path.join(evpath, f"nu{self._seqid}_{level[0]}-{level[1]}_keV_stacked.evt")
-            if f"nu{self._seqid}_{level[0]}-{level[1]}_keV_stacked.evt" not in self._evtcontents:
-                print(f"Generating nu{self._seqid}_{level[0]}-{level[1]}_keV_stacked.evt")
-                script_id = generate_random_id()
-                evt_xselect_filter(infiles, outfile, '.', level[0], level[1], script_id)
-                os.system(f"xselect @{script_id}xselect.xco > {os.path.join(os.path.relpath(self._logpath), f'xselect_{level[0]}-{level[1]}_keV_stacked_evt')}.log")
-                os.system(f"rm {script_id}xselect.xco")
-            self._evt_files[f"{level[0]}-{level[1]}"].append(os.path.abspath(outfile))
-
-        # Filtered image files
-        self._im_paths = {}
-
-        # keV level focused stacked img files
-        for level in self._kev_levels:
-            infiles = os.path.relpath(self._fpma_eventpath)
-            impath = os.path.relpath(self._impath)
-            outfile = os.path.join(impath, f"nu{self._seqid}_{level[0]}-{level[1]}_keV_A01.fits")
-            if f"nu{self._seqid}_{level[0]}-{level[1]}_keV_A01.fits" not in self._imcontents:
-                print(f"Generating nu{self._seqid}_{level[0]}-{level[1]}_keV_A01.fits")
-                script_id = generate_random_id()
-                evt_to_fits_image(infiles, outfile, '.', level[0], level[1], script_id)
-                os.system(f"xselect @{script_id}xselect.xco > {os.path.join(os.path.relpath(self._logpath), f'xselect_{level[0]}-{level[1]}_keV_A01_fits')}.log")
-                os.system(f"rm {script_id}xselect.xco")
-            self._im_paths[f"{level[0]}-{level[1]}"] = [os.path.abspath(outfile)]
-
-        # keV level focused stacked img files
-        for level in self._kev_levels:
-            infiles = os.path.relpath(self._fpmb_eventpath)
-            impath = os.path.relpath(self._impath)
-            outfile = os.path.join(impath, f"nu{self._seqid}_{level[0]}-{level[1]}_keV_B01.fits")
-            if f"nu{self._seqid}_{level[0]}-{level[1]}_keV_B01.fits" not in self._imcontents:
-                print(f"Generating nu{self._seqid}_{level[0]}-{level[1]}_keV_B01.fits")
-                script_id = generate_random_id()
-                evt_to_fits_image(infiles, outfile, '.', level[0], level[1], script_id)
-                os.system(f"xselect @{script_id}xselect.xco > {os.path.join(os.path.relpath(self._logpath), f'xselect_{level[0]}-{level[1]}_keV_B01_fits')}.log")
-                os.system(f"rm {script_id}xselect.xco")
-            self._im_paths[f"{level[0]}-{level[1]}"].append(os.path.abspath(outfile))
-
-        # keV level focused stacked img files
-        for level in self._kev_levels:
-            infiles = f"{os.path.relpath(self._fpma_eventpath)} , {os.path.relpath(self._fpmb_eventpath)}"
-            impath = os.path.relpath(self._impath)
-            outfile = os.path.join(impath, f"nu{self._seqid}_{level[0]}-{level[1]}_keV_stacked.fits")
-            if f"nu{self._seqid}_{level[0]}-{level[1]}_keV_stacked.fits" not in self._imcontents:
-                print(f"Generating nu{self._seqid}_{level[0]}-{level[1]}_keV_stacked.fits")
-                script_id = generate_random_id()
-                evt_to_fits_image(infiles, outfile, '.', level[0], level[1], script_id)
-                os.system(f"xselect @{script_id}xselect.xco > {os.path.join(os.path.relpath(self._logpath), f'xselect_{level[0]}-{level[1]}_keV_stacked_fits')}.log")
-                os.system(f"rm {script_id}xselect.xco")
-            self._im_paths[f"{level[0]}-{level[1]}"].append(os.path.abspath(outfile))
-
-        # Store relevant parameters
-        hdu = fits.open(outfile, uint=True)[0]
-        self.stacked_data = getdata(outfile)
-        self.wcs = WCS(hdu.header)
-        self._source_pix_coordinates = [skycoord_to_pixel(self._source_position, self.wcs)]
-        self.n_cuts = self.exposure['A01'] / self._dtime
-
-
-    def display_image(self, savefig=False, display=True):
-        """
-        Displays an image of the stacked image for this observation with the 
-        source labeled with a circular region.
-
-        Arguments
-        ---------
-        savefig : bool
-            A flag determining whether to save the plot
-        display : bool
-            A flag determining whether to display the plot in an interactive window
-        """
-        
-        # Format figure
-        fig = plt.figure()
-        fig.patch.set_facecolor('black')
-
-        # Format plot axes
-        ax = fig.add_subplot(projection=self.wcs)
-        ax.set_facecolor('gray')
-        ax.tick_params(color='white', labelcolor='white')
-        ax.tick_params(axis='both', which='major', labelsize=15)
-                
-        # Plot data elements and specific formatting
-        im = ax.imshow(self.stacked_data, origin='lower', norm=matplotlib.colors.LogNorm())
-        im.axes.tick_params(color='white', labelcolor='white')
-        object_region = CircleSkyRegion(center=self._source_position, radius=(self.rlimit - 50) * u.arcsecond)
-        plot_region = object_region.to_pixel(self.wcs)
-        plot_region.plot(ax=ax, color="yellow")
-        
-        # Finalize plot parameters
-        plt.grid(True)
-        plt.xlabel('Right Ascension', color='white', fontsize=18)
-        plt.ylabel('Declination', color='white', fontsize=18)
-        plt.xlim(250, 750)
-        plt.ylim(250, 750)
-
-        # IO
-        if savefig:
-            plt.savefig("stacked_full.pdf", dpi=1000)
-        if display:
-            plt.show()
-
-
-    def display_detections(self, savefig=False, display=True):
-        """
-        Displays an image of the stacked full exposure image for this observation with the 
-        source labeled with a circular region and all observations for this specific 
-        observation labeled.
-        """
-        
-        # Import current detections
-        NoneType = type(None)
-        detections, flag, filey = self.read_final_detections()
-        
-        # If no detections are found, run the default image display method
-        if type(detections) == NoneType:
-            self.display_image()
-            return
-        if len(detections["INDEX"]) == 0:
-            self.display_image()
-        else:
-            fig = plt.figure()
-            ax = fig.add_subplot(projection=self.wcs)
-            ax.set_facecolor('gray')
-            #ax = plt.subplot(projection=self.wcs)
-            fig.patch.set_facecolor('black')
-            im = ax.imshow(self.stacked_data, origin='lower', norm=matplotlib.colors.LogNorm())
-            circle = Point(self._source_pix_coordinates[0][0], self._source_pix_coordinates[0][1]).buffer(self.rlimit / 2.46, resolution=1000)
-            plot_polygon(circle, ax=ax, add_points=False, color="yellow")
-            #object_region = CircleSkyRegion(center=self._source_position, radius=self.rlimit*u.arcsecond)
-            #plot_region = object_region.to_pixel(self.wcs)
-            #plot_region.plot(ax=ax, color="green")
-
-            # Loop through detections and plot
-            
-            x_pix = detections['XPIX']
-            x_pi = [float(pix) for pix in x_pix]
-            y_pix = detections['YPIX']
-            y_pi = [float(pix) for pix in y_pix]
-            probs = np.array(detections['PROB'])
-            probs_pi = [float(prob) for prob in probs]
-
-            ploty = ax.scatter(x_pi, y_pi, marker="d", c=probs_pi, s=80, linewidths=1, edgecolors= "black", cmap='spring', norm=matplotlib.colors.LogNorm())               
-            ax.tick_params(color='white', labelcolor='white')
-            ax.tick_params(axis='both', which='major', labelsize=15)
-            im.axes.tick_params(color='white', labelcolor='white')
-            #ax.get_coords_overlay(self.wcs)
-            #cb = plt.colorbar(ploty, orientation='horizontal', shrink=0.5)
-            #cb.set_label('Probability', color='white', fontsize=15)
-            #cb.ax.xaxis.set_tick_params(color='white')
-            #cb.outline.set_edgecolor('white')
-            #plt.setp(plt.getp(cb.ax.axes, 'xticklabels'), color='white', fontsize=15)
-            plt.grid(True)
-            plt.xlabel('Right Ascension', color='white', fontsize=18)
-            plt.ylabel('Declination', color='white', fontsize=18)
-            plt.xlim(250, 750)
-            plt.ylim(250, 750)
-            
-
-            if savefig:
-                savepath = os.path.relpath(os.path.join(self._outpath, "final_detections.pdf"))
-                plt.savefig(savepath, dpi=1000)
-            if display:
-                plt.show()
-
-
-    def read_final_detections(self, detectiontype="basic"):
-        """
-        Reads in all of the detections associated with this object
-
-        Arguments
-        ---------
-        detectiontype : str
-            The type or stage of detections desired to be read in. Supported 
-            types include: ximage, poisson, and classify
-        
-        Returns
-        -------
-        """
-
-        if detectiontype == "basic":
-            detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_detections.tbl"))
-            filename = f"{self._dtime}_detections.tbl"
-        if detectiontype == "poisson":
-            detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_poisson.tbl"))
-            filename = f"{self._dtime}_poisson.tbl"
-        if detectiontype == "classify":
-            detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_classify.tbl"))
-            filename = f"{self._dtime}_classify.tbl"
-        if not os.path.isfile(detpath):
-            print("No final detections found!")
-            return None, False, None
-        
-        detect_info = Table.read(detpath, format='ipac')
-        if len(detect_info['INDEX']) == 0:
-            return detect_info, False, filename
-        else:
-            return detect_info, True, filename
-
-
-    def read_in_phi_channels(self, pilow_file, pihi_file):
+    def _read_in_phi_channels(self, pilow_file, pihi_file):
         """
         Makes use of two files `nustar_pilow.txt` and `nustar_pihi.txt` within the `nustar` directory to set PI channel thresholds 
         for data analysis using NUSTARDAS
@@ -620,6 +372,106 @@ class NuAnalysis(Observation):
         return [data_intervals_1, data_intervals_2]
 
 
+    def _process_evt_files(self):
+        """
+        Performs energy binning on clean event files and generates stacked fits image 
+        files for photometry.
+        """
+        from astropy.io.fits import getdata
+
+        # Filtered event files
+        self._evt_files = {}
+
+        # keV level focused FPMA evt files
+        for level in self._kev_levels:
+            infiles = os.path.relpath(self._fpma_eventpath)
+            evpath = os.path.relpath(self._evtpath)
+            outfile = os.path.join(evpath, f"nu{self._seqid}_{level[0]}-{level[1]}_keV_A01.evt")
+            if f"nu{self._seqid}_{level[0]}-{level[1]}_keV_A01.evt" not in self._evtcontents:
+                print(f"Generating nu{self._seqid}_{level[0]}-{level[1]}_keV_A01.evt")
+                script_id = generate_random_id()
+                evt_xselect_filter(infiles, outfile, '.', level[0], level[1], script_id)
+                os.system(f"xselect @{script_id}xselect.xco > {os.path.join(os.path.relpath(self._logpath), f'xselect_{level[0]}-{level[1]}_keV_A01_evt')}.log")
+                os.system(f"rm {script_id}xselect.xco")
+            self._evt_files[f"{level[0]}-{level[1]}"] = [os.path.abspath(outfile)]
+
+        # keV level focused FPMB evt files
+        for level in self._kev_levels:
+            infiles = os.path.relpath(self._fpmb_eventpath)
+            evpath = os.path.relpath(self._evtpath)
+            outfile = os.path.join(evpath, f"nu{self._seqid}_{level[0]}-{level[1]}_keV_B01.evt")
+            if f"nu{self._seqid}_{level[0]}-{level[1]}_keV_B01.evt" not in self._evtcontents:
+                print(f"Generating nu{self._seqid}_{level[0]}-{level[1]}_keV_B01.evt")
+                script_id = generate_random_id()
+                evt_xselect_filter(infiles, outfile, '.', level[0], level[1], script_id)
+                os.system(f"xselect @{script_id}xselect.xco > {os.path.join(os.path.relpath(self._logpath), f'xselect_{level[0]}-{level[1]}_keV_B01_evt')}.log")
+                os.system(f"rm {script_id}xselect.xco")
+            self._evt_files[f"{level[0]}-{level[1]}"].append(os.path.abspath(outfile))
+
+        # keV level focused stacked evt files
+        for level in self._kev_levels:
+            infiles = f"{os.path.relpath(self._fpma_eventpath)} , {os.path.relpath(self._fpmb_eventpath)}"
+            evpath = os.path.relpath(self._evtpath)
+            outfile = os.path.join(evpath, f"nu{self._seqid}_{level[0]}-{level[1]}_keV_stacked.evt")
+            if f"nu{self._seqid}_{level[0]}-{level[1]}_keV_stacked.evt" not in self._evtcontents:
+                print(f"Generating nu{self._seqid}_{level[0]}-{level[1]}_keV_stacked.evt")
+                script_id = generate_random_id()
+                evt_xselect_filter(infiles, outfile, '.', level[0], level[1], script_id)
+                os.system(f"xselect @{script_id}xselect.xco > {os.path.join(os.path.relpath(self._logpath), f'xselect_{level[0]}-{level[1]}_keV_stacked_evt')}.log")
+                os.system(f"rm {script_id}xselect.xco")
+            self._evt_files[f"{level[0]}-{level[1]}"].append(os.path.abspath(outfile))
+
+        # Filtered image files
+        self._im_paths = {}
+
+        # keV level focused stacked img files
+        for level in self._kev_levels:
+            infiles = os.path.relpath(self._fpma_eventpath)
+            impath = os.path.relpath(self._impath)
+            outfile = os.path.join(impath, f"nu{self._seqid}_{level[0]}-{level[1]}_keV_A01.fits")
+            if f"nu{self._seqid}_{level[0]}-{level[1]}_keV_A01.fits" not in self._imcontents:
+                print(f"Generating nu{self._seqid}_{level[0]}-{level[1]}_keV_A01.fits")
+                script_id = generate_random_id()
+                evt_to_fits_image(infiles, outfile, '.', level[0], level[1], script_id)
+                os.system(f"xselect @{script_id}xselect.xco > {os.path.join(os.path.relpath(self._logpath), f'xselect_{level[0]}-{level[1]}_keV_A01_fits')}.log")
+                os.system(f"rm {script_id}xselect.xco")
+            self._im_paths[f"{level[0]}-{level[1]}"] = [os.path.abspath(outfile)]
+
+        # keV level focused stacked img files
+        for level in self._kev_levels:
+            infiles = os.path.relpath(self._fpmb_eventpath)
+            impath = os.path.relpath(self._impath)
+            outfile = os.path.join(impath, f"nu{self._seqid}_{level[0]}-{level[1]}_keV_B01.fits")
+            if f"nu{self._seqid}_{level[0]}-{level[1]}_keV_B01.fits" not in self._imcontents:
+                print(f"Generating nu{self._seqid}_{level[0]}-{level[1]}_keV_B01.fits")
+                script_id = generate_random_id()
+                evt_to_fits_image(infiles, outfile, '.', level[0], level[1], script_id)
+                os.system(f"xselect @{script_id}xselect.xco > {os.path.join(os.path.relpath(self._logpath), f'xselect_{level[0]}-{level[1]}_keV_B01_fits')}.log")
+                os.system(f"rm {script_id}xselect.xco")
+            self._im_paths[f"{level[0]}-{level[1]}"].append(os.path.abspath(outfile))
+
+        # keV level focused stacked img files
+        for level in self._kev_levels:
+            infiles = f"{os.path.relpath(self._fpma_eventpath)} , {os.path.relpath(self._fpmb_eventpath)}"
+            impath = os.path.relpath(self._impath)
+            outfile = os.path.join(impath, f"nu{self._seqid}_{level[0]}-{level[1]}_keV_stacked.fits")
+            if f"nu{self._seqid}_{level[0]}-{level[1]}_keV_stacked.fits" not in self._imcontents:
+                print(f"Generating nu{self._seqid}_{level[0]}-{level[1]}_keV_stacked.fits")
+                script_id = generate_random_id()
+                evt_to_fits_image(infiles, outfile, '.', level[0], level[1], script_id)
+                os.system(f"xselect @{script_id}xselect.xco > {os.path.join(os.path.relpath(self._logpath), f'xselect_{level[0]}-{level[1]}_keV_stacked_fits')}.log")
+                os.system(f"rm {script_id}xselect.xco")
+            self._im_paths[f"{level[0]}-{level[1]}"].append(os.path.abspath(outfile))
+
+        # Store relevant parameters
+        hdu = fits.open(outfile, uint=True)[0]
+        self.stacked_data = getdata(outfile)
+        self.wcs = WCS(hdu.header)
+        self._source_pix_coordinates = [skycoord_to_pixel(self._source_position, self.wcs)]
+        self.n_cuts = self.exposure['A01'] / self._dtime
+        return
+    
+    
     def generate_detector_images(self):
         """
         Generates fits images which are in DET1 coordinates for specified energy ranges.
@@ -647,148 +499,7 @@ class NuAnalysis(Observation):
                                 outpath=self._impath)
                 filtered_image_files['B'].append(b_file)
     
-
-    def source_det1_coords(self):
-        """
-        This method estimates the position of the main source within the detector coordinate 
-        frame.
-        """
-        from astropy.io.fits import getdata
-        
-        # FPMA
-        fpma_event_data = getdata(self._fpma_eventpath)
-        x_vals = []
-        y_vals = []
-
-        # Loop through all events
-        for datum in fpma_event_data:
-            x = datum[13]
-            y = datum[14]
-
-            # Record the detector coordinate if event is near the pixel coordinates of main source
-            if x >= self._source_pix_coordinates[0][0] - 1 and x <= self._source_pix_coordinates[0][0] + 1:
-                if y >= self._source_pix_coordinates[0][1] - 1 and y <= self._source_pix_coordinates[0][1] + 1:
-                    x_vals.append(datum[9])
-                    y_vals.append(datum[10])
-        
-        # Take a mean to find the pixel to within a 2x2 grid of the actual position
-        det_x = np.mean(x_vals)
-        det_y = np.mean(y_vals)
-        a_src_coordinates = [[det_x, det_y]]
-        
-        # FPMB
-        fpmb_event_data = getdata(self._fpmb_eventpath)
-        x_vals = []
-        y_vals = []
-
-        # Loop through all events
-        for datum in fpmb_event_data:
-            x = datum[13]
-            y = datum[14]
-
-            # Record the detector coordinate if event is near the pixel coordinates of main source
-            if x >= self._source_pix_coordinates[0][0] - 1 and x <= self._source_pix_coordinates[0][0] + 1:
-                if y >= self._source_pix_coordinates[0][1] - 1 and y <= self._source_pix_coordinates[0][1] + 1:
-                    x_vals.append(datum[9])
-                    y_vals.append(datum[10])
-        
-        # Take a mean to find the pixel to within a 2x2 grid of the actual position
-        det_x = np.mean(x_vals)
-        det_y = np.mean(y_vals)
-        b_src_coordinates = [[det_x, det_y]]
-
-        with open(os.path.join(self._impath, "det1_coords.txt"), 'w') as file:
-            file.write(f"{a_src_coordinates[0][0]} {a_src_coordinates[0][1]} \
-                       {b_src_coordinates[0][0]} {b_src_coordinates[0][1]}")
-
-
-    def estimate_background(self):
-        from astropy.io.fits import getdata
-        
-        background_rates = {}
-        effective_exposure_time = self.calculate_effective_exposure()
-        for channel in self._phi_channels:
-            # Fine R_90 for FPMA
-            elow = round(self.ns.channel_to_energy(float(channel[0])), 3)
-            ehigh = round(self.ns.channel_to_energy(float(channel[1])), 3)
-            if f"{elow}-{ehigh}" not in background_rates:
-                background_rates[f"{elow}-{ehigh}"] = []
-            det1_a_data = getdata(self._refpath + f"photometry/nu{self._seqid}A01_cl_{elow}to{ehigh}keV_det1.fits")
-            total_aper = RectangularAperture([180.0, 180.0], 330.0, 330.0)
-            total_sums, total_error = total_aper.do_photometry(det1_a_data)
-            count_ratios = []
-            min_deviance = 1
-            optimal_radius = 0
-            det_x = self._source_det1_coords['A'][0]
-            det_y = self._source_det1_coords['A'][1]
-            for i in tqdm(np.arange(30, 290, 1)):
-                source_aper = CircularAperture(self._source_det1_coords['A'], i)
-                src_sums, src_error = source_aper.do_photometry(det1_a_data)
-                count_ratio = src_sums / total_sums
-                difference = np.abs(0.93 - count_ratio)
-                if difference < min_deviance:
-                    optimal_radius = i
-                    min_deviance = difference
-                count_ratios.append((i, count_ratio))
-            
-            filepath = self._refpath + f"photometry/nu{self._seqid}A01_cl_{elow}to{ehigh}keV_det1_bkg.pdf"
-            background_area = calculate_background_area(det1_a_data, det_x, det_y, optimal_radius, filepath=filepath)
-            arcsecond_area = background_area * 6.0516 * u.arcsecond * u.arcsecond
-
-            bkg_ann = CircularAnnulus(self._source_det1_coords['A'], optimal_radius, optimal_radius + 30)
-            bkg_count, bkg_error = bkg_ann.do_photometry(det1_a_data)
-            if bkg_count == 0:
-                bkg_ann = CircularAnnulus(self._source_det1_coords['A'], optimal_radius - 50, optimal_radius + 30 - 50)
-            bkg_count = bkg_count * u.ct
-            area_count_rate = bkg_count / arcsecond_area
-            final_count_rate = area_count_rate / effective_exposure_time / u.second
-            background_rates[f"{elow}-{ehigh}"].append(final_count_rate)
-
-
-        for channel in self._phi_channels:
-            # Fine R_90 for FPMB
-            elow = round(self.ns.channel_to_energy(float(channel[0])), 3)
-            ehigh = round(self.ns.channel_to_energy(float(channel[1])), 3)
-            det1_a_data = getdata(self._refpath + f"photometry/nu{self._seqid}B01_cl_{elow}to{ehigh}keV_det1.fits")
-            total_aper = RectangularAperture([180.0, 180.0], 330.0, 330.0)
-            total_sums, total_error = total_aper.do_photometry(det1_a_data)
-            count_ratios = []
-            min_deviance = 1
-            optimal_radius = 0
-            det_x = self._source_det1_coords['B'][0]
-            det_y = self._source_det1_coords['B'][1]
-            for i in tqdm(np.arange(30, 290, 1)):
-                source_aper = CircularAperture(self._source_det1_coords['B'], i)
-                src_sums, src_error = source_aper.do_photometry(det1_a_data)
-                count_ratio = src_sums / total_sums
-                difference = np.abs(0.93 - count_ratio)
-                if difference < min_deviance:
-                    optimal_radius = i
-                    min_deviance = difference
-                count_ratios.append((i, count_ratio))
-            
-            filepath = self._refpath + f"photometry/nu{self._seqid}B01_cl_{elow}to{ehigh}keV_det1_bkg.pdf"
-            background_area = calculate_background_area(det1_a_data, det_x, det_y, optimal_radius, filepath=filepath)
-            arcsecond_area = background_area * 6.0516 * u.arcsecond * u.arcsecond
-
-            bkg_ann = CircularAnnulus(self._source_det1_coords['B'], optimal_radius, optimal_radius + 30)
-            bkg_count, bkg_error = bkg_ann.do_photometry(det1_a_data)
-            if bkg_count == 0:
-                bkg_ann = CircularAnnulus(self._source_det1_coords['B'], optimal_radius - 50, optimal_radius + 30 - 50)
-            bkg_count = bkg_count * u.ct
-            area_count_rate = bkg_count / arcsecond_area
-            final_count_rate = area_count_rate / self.exposure['B01'] / u.second
-            background_rates[f"{elow}-{ehigh}"].append(final_count_rate)
-        
-        rate_string = ""
-        for bound in background_rates:
-            for val in background_rates[bound]:
-                rate_string += f"{val.value} "
-        with open(self._refpath + "photometry/background_rates.txt", 'w') as file:
-            file.write(rate_string)
-        
-        
-
+    
     def event_extraction(self):
         """
         Performs the event extraction procedures for binning the event file for this observation into 
@@ -877,8 +588,8 @@ class NuAnalysis(Observation):
         with open(f"{self._dtime}_binning_flag.txt", "w") as file:
             file.write("PROCESSING COMPLETE")
         os.chdir(self._mainpath)
-
-
+    
+    
     def verify_event_extraction(self):
         """
         This method performs a check to verify if all of the relevant evt files 
@@ -924,13 +635,359 @@ class NuAnalysis(Observation):
                 complete_vals.append(round(percent, 4))
 
         return complete_vals
+    
+    
+    def source_det1_coords(self):
+        """
+        This method is DEPRECATED
+        This method estimates the position of the main source within the detector coordinate 
+        frame.
+        """
+        from astropy.io.fits import getdata
+        
+        # FPMA
+        fpma_event_data = getdata(self._fpma_eventpath)
+        x_vals = []
+        y_vals = []
+
+        # Loop through all events
+        for datum in fpma_event_data:
+            x = datum[13]
+            y = datum[14]
+
+            # Record the detector coordinate if event is near the pixel coordinates of main source
+            if x >= self._source_pix_coordinates[0][0] - 1 and x <= self._source_pix_coordinates[0][0] + 1:
+                if y >= self._source_pix_coordinates[0][1] - 1 and y <= self._source_pix_coordinates[0][1] + 1:
+                    x_vals.append(datum[9])
+                    y_vals.append(datum[10])
+        
+        # Take a mean to find the pixel to within a 2x2 grid of the actual position
+        det_x = np.mean(x_vals)
+        det_y = np.mean(y_vals)
+        a_src_coordinates = [[det_x, det_y]]
+        
+        # FPMB
+        fpmb_event_data = getdata(self._fpmb_eventpath)
+        x_vals = []
+        y_vals = []
+
+        # Loop through all events
+        for datum in fpmb_event_data:
+            x = datum[13]
+            y = datum[14]
+
+            # Record the detector coordinate if event is near the pixel coordinates of main source
+            if x >= self._source_pix_coordinates[0][0] - 1 and x <= self._source_pix_coordinates[0][0] + 1:
+                if y >= self._source_pix_coordinates[0][1] - 1 and y <= self._source_pix_coordinates[0][1] + 1:
+                    x_vals.append(datum[9])
+                    y_vals.append(datum[10])
+        
+        # Take a mean to find the pixel to within a 2x2 grid of the actual position
+        det_x = np.mean(x_vals)
+        det_y = np.mean(y_vals)
+        b_src_coordinates = [[det_x, det_y]]
+
+        with open(os.path.join(self._impath, "det1_coords.txt"), 'w') as file:
+            file.write(f"{a_src_coordinates[0][0]} {a_src_coordinates[0][1]} \
+                       {b_src_coordinates[0][0]} {b_src_coordinates[0][1]}")
+    
+    
+    def read_final_detections(self, detectiontype="basic"):
+        """
+        Reads in all of the detections associated with this object
+
+        Arguments
+        ---------
+        detectiontype : str
+            The type or stage of detections desired to be read in. Supported 
+            types include: ximage, poisson, and classify
+        
+        Returns
+        -------
+        """
+
+        if detectiontype == "basic":
+            detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_detections.tbl"))
+            filename = f"{self._dtime}_detections.tbl"
+        if detectiontype == "poisson":
+            detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_poisson.tbl"))
+            filename = f"{self._dtime}_poisson.tbl"
+        if detectiontype == "classify":
+            detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_classify.tbl"))
+            filename = f"{self._dtime}_classify.tbl"
+        if detectiontype == "basicdet1":
+            detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_basic_det1.tbl"))
+            filename = f"{self._dtime}_basic_det1.tbl"
+        if detectiontype == "straycutbasic":
+            detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_straycut_basicdet1.tbl"))
+            filename = f"{self._dtime}_straycut_basicdet1.tbl"
+        if detectiontype == "straycut":
+            detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_straycut.tbl"))
+            filename = f"{self._dtime}_straycut.tbl"
+        if not os.path.isfile(detpath):
+            print("No final detections found!")
+            return None, False, None
+
+        detect_info = Table.read(detpath, format='ipac')
+        if len(detect_info['INDEX']) == 0:
+            return detect_info, False, filename
+        else:
+            return detect_info, True, filename
+        
+
+    # Display methods below
+
+    def _display_terminal(self):
+        """
+        Displays basic information of a newly loaded observation for ease-of-reading in the terminal
+        """
+        print("#" * 90)
+        print(f"Succesfully read in {self._object}: {self._seqid}")
+        print(f"Main Source located: ({self._source_pix_coordinates[0][0]}, {self._source_pix_coordinates[0][1]})")
+        print("#" * 90)
 
 
+    def display_image(self, savefig=False, display=True, style="dark"):
+        """
+        Displays the stacked image for this observation with the 
+        source labeled with a circular region.
+
+        Arguments
+        ---------
+        savefig : bool, optional
+            A flag determining whether to save the plot
+        display : bool, optional
+            A flag determining whether to display the plot in an interactive window
+        style : str, optional
+            A string describing the image display style. Options include ``dark`` 
+            which sets a black facecolor, and ``bright`` which sets a white 
+            facecolor
+        """
+
+        # Initialize figure and plot elements
+        fig = plt.figure()
+        ax = fig.add_subplot(projection=self.wcs)
+        im = ax.imshow(self.stacked_data, origin='lower', norm=matplotlib.colors.LogNorm())
+        object_region = CircleSkyRegion(center=self._source_position, radius=(self.rlimit - 50) * u.arcsecond)
+        plot_region = object_region.to_pixel(self.wcs)
+        plot_region.plot(ax=ax, color="yellow")
+        plt.grid(True)
+        plt.xlim(250, 750)
+        plt.ylim(250, 750)
+
+        # Apply style parameters
+        if style == "dark":
+            fig.patch.set_facecolor("black")
+            ax.set_facecolor("gray")
+            ax.tick_params(color="white", labelcolor="white")
+            ax.tick_params(axis="both", which="major", labelsize=15)
+            im.axes.tick_params(color="white", labelcolor="white")
+            plt.xlabel("Right Ascension", color="white", fontsize=18)
+            plt.ylabel("Declination", color="white", fontsize=18)
+        
+        if style == "bright":
+            fig.patch.set_facecolor("white")
+            ax.set_facecolor("white")
+            ax.tick_params(color="black", labelcolor="black")
+            ax.tick_params(axis="both", which="major", labelsize=15)
+            im.axes.tick_params(color="black", labelcolor="black")
+            plt.xlabel("Right Ascension", color="black", fontsize=18)
+            plt.ylabel("Declination", color="black", fontsize=18)
+
+        # IO
+        if savefig:
+            plt.savefig("stacked_full.pdf", dpi=1000)
+        if display:
+            plt.show()
+
+
+    def display_detections(self, savefig=False, display=True, style="dark"):
+        """
+        Displays an image of the stacked full exposure image for this observation with the 
+        source labeled with a circular region and all observations for this specific 
+        observation labeled.
+        
+        Arguments
+        ---------
+        savefig : bool, optional
+            A flag determining whether to save the plot
+        display : bool, optional
+            A flag determining whether to display the plot in an interactive window
+        style : str, optional
+            A string describing the image display style. Options include ``dark`` 
+            which sets a black facecolor, and ``bright`` which sets a white 
+            facecolor
+        """
+        
+        # Import current detections
+        NoneType = type(None)
+        detections, flag, filey = self.read_final_detections()
+        
+        # If no detections are found, run the default image display method
+        if type(detections) == NoneType:
+            self.display_image()
+            return
+        if len(detections["INDEX"]) == 0:
+            self.display_image()
+            return
+        
+        # Initialize figure and plot elements
+        fig = plt.figure()
+        ax = fig.add_subplot(projection=self.wcs)
+        stacked_data = fits.getdata(os.path.join(self._mainpath, "science.fits"))
+        im = ax.imshow(stacked_data, origin='lower', norm=matplotlib.colors.LogNorm())
+        center = Point(self._source_pix_coordinates[0][0], self._source_pix_coordinates[0][1]).buffer((self.rlimit) / 2.46, resolution=1000)
+        plot_polygon(center, ax=ax, add_points=False, color="yellow")
+        
+        # Plot all detections
+        det_pos_x = []
+        det_pos_y = []
+        det_pos_prob = []
+        for idx, val in enumerate(detections['XPIX']):
+            x_pix = detections['XPIX'][idx]
+            y_pix = detections['YPIX'][idx]
+            
+            # Sanity check for main source mask
+            if np.sqrt((float(x_pix) - float(self._source_pix_coordinates[0][0]))**2 + (float(y_pix) - float(self._source_pix_coordinates[0][1]))**2) > (self.rlimit) / 2.5:
+                det_pos_x.append(float(x_pix))
+                det_pos_y.append(float(y_pix)) 
+                det_pos_prob.append(float(detections['PROB'][idx]))
+        det_scatter = ax.scatter(det_pos_x, det_pos_y, marker="d", c=det_pos_prob, s=120, linewidths=1, edgecolors= "black", cmap="spring", norm=matplotlib.colors.LogNorm()) 
+        cb = plt.colorbar(det_scatter, orientation="vertical")
+        plt.title("Probability", x=1.11)
+        plt.grid(True)
+        plt.xlim(250, 750)
+        plt.ylim(250, 750)
+        
+        # Apply style parameters
+        if style == "dark":
+            fig.patch.set_facecolor("black")
+            ax.set_facecolor("gray")
+            ax.tick_params(color="white", labelcolor="white")
+            ax.tick_params(axis="both", which="major", labelsize=15)
+            im.axes.tick_params(color="white", labelcolor="white")
+            cb.set_label('Probability', color='white', fontsize=15)
+            cb.ax.yaxis.set_tick_params(color='white')
+            cb.outline.set_edgecolor('white')
+            plt.setp(plt.getp(cb.ax.yaxis, 'ticklabels'), color='white', fontsize=15)
+            plt.xlabel("Right Ascension", color="white", fontsize=18)
+            plt.ylabel("Declination", color="white", fontsize=18)
+            
+        if style == "bright":
+            fig.patch.set_facecolor("white")
+            ax.set_facecolor("white")
+            ax.tick_params(color="black", labelcolor="black")
+            ax.tick_params(axis="both", which="major", labelsize=15)
+            im.axes.tick_params(color="black", labelcolor="white")
+            cb.set_label('Probability', color="black", fontsize=15)
+            cb.ax.yaxis.set_tick_params(color="black")
+            cb.outline.set_edgecolor("black")
+            plt.setp(plt.getp(cb.ax.yaxis, 'ticklabels'), color="black", fontsize=15)
+            plt.xlabel("Right Ascension", color="black", fontsize=18)
+            plt.ylabel("Declination", color="black", fontsize=18)
+
+        # IO
+        if savefig:
+            savepath = os.path.relpath(os.path.join(self._outpath, "final_detections.pdf"))
+            plt.savefig(savepath, dpi=1000)
+        if display:
+            plt.show()
+
+    # Analysis methods
+
+    def estimate_background(self):
+        """
+        This method estimates the background for an observation using the DET1 coordinate system. It uses an 
+        annulus around the main source mask to estimate the quiessant background rate.
+        """
+        from astropy.io.fits import getdata
+        
+        background_rates = {}
+        effective_exposure_time = self.calculate_effective_exposure()
+        for channel in self._phi_channels:
+            # Fine R_90 for FPMA
+            elow = round(self.ns.channel_to_energy(float(channel[0])), 3)
+            ehigh = round(self.ns.channel_to_energy(float(channel[1])), 3)
+            if f"{elow}-{ehigh}" not in background_rates:
+                background_rates[f"{elow}-{ehigh}"] = []
+            det1_a_data = getdata(self._refpath + f"photometry/nu{self._seqid}A01_cl_{elow}to{ehigh}keV_det1.fits")
+            total_aper = RectangularAperture([180.0, 180.0], 330.0, 330.0)
+            total_sums, total_error = total_aper.do_photometry(det1_a_data)
+            count_ratios = []
+            min_deviance = 1
+            optimal_radius = 0
+            det_x = self._source_det1_coords['A'][0]
+            det_y = self._source_det1_coords['A'][1]
+            for i in tqdm(np.arange(30, 290, 1)):
+                source_aper = CircularAperture(self._source_det1_coords['A'], i)
+                src_sums, src_error = source_aper.do_photometry(det1_a_data)
+                count_ratio = src_sums / total_sums
+                difference = np.abs(0.93 - count_ratio)
+                if difference < min_deviance:
+                    optimal_radius = i
+                    min_deviance = difference
+                count_ratios.append((i, count_ratio))
+            
+            filepath = self._refpath + f"photometry/nu{self._seqid}A01_cl_{elow}to{ehigh}keV_det1_bkg.pdf"
+            background_area = calculate_background_area(det1_a_data, det_x, det_y, optimal_radius, filepath=filepath)
+            arcsecond_area = background_area * 6.0516 * u.arcsecond * u.arcsecond
+
+            bkg_ann = CircularAnnulus(self._source_det1_coords['A'], optimal_radius, optimal_radius + 30)
+            bkg_count, bkg_error = bkg_ann.do_photometry(det1_a_data)
+            if bkg_count == 0:
+                bkg_ann = CircularAnnulus(self._source_det1_coords['A'], optimal_radius - 50, optimal_radius + 30 - 50)
+            bkg_count = bkg_count * u.ct
+            area_count_rate = bkg_count / arcsecond_area
+            final_count_rate = area_count_rate / effective_exposure_time / u.second
+            background_rates[f"{elow}-{ehigh}"].append(final_count_rate)
+
+
+        for channel in self._phi_channels:
+            # Fine R_90 for FPMB
+            elow = round(self.ns.channel_to_energy(float(channel[0])), 3)
+            ehigh = round(self.ns.channel_to_energy(float(channel[1])), 3)
+            det1_a_data = getdata(self._refpath + f"photometry/nu{self._seqid}B01_cl_{elow}to{ehigh}keV_det1.fits")
+            total_aper = RectangularAperture([180.0, 180.0], 330.0, 330.0)
+            total_sums, total_error = total_aper.do_photometry(det1_a_data)
+            count_ratios = []
+            min_deviance = 1
+            optimal_radius = 0
+            det_x = self._source_det1_coords['B'][0]
+            det_y = self._source_det1_coords['B'][1]
+            for i in tqdm(np.arange(30, 290, 1)):
+                source_aper = CircularAperture(self._source_det1_coords['B'], i)
+                src_sums, src_error = source_aper.do_photometry(det1_a_data)
+                count_ratio = src_sums / total_sums
+                difference = np.abs(0.93 - count_ratio)
+                if difference < min_deviance:
+                    optimal_radius = i
+                    min_deviance = difference
+                count_ratios.append((i, count_ratio))
+            
+            filepath = self._refpath + f"photometry/nu{self._seqid}B01_cl_{elow}to{ehigh}keV_det1_bkg.pdf"
+            background_area = calculate_background_area(det1_a_data, det_x, det_y, optimal_radius, filepath=filepath)
+            arcsecond_area = background_area * 6.0516 * u.arcsecond * u.arcsecond
+
+            bkg_ann = CircularAnnulus(self._source_det1_coords['B'], optimal_radius, optimal_radius + 30)
+            bkg_count, bkg_error = bkg_ann.do_photometry(det1_a_data)
+            if bkg_count == 0:
+                bkg_ann = CircularAnnulus(self._source_det1_coords['B'], optimal_radius - 50, optimal_radius + 30 - 50)
+            bkg_count = bkg_count * u.ct
+            area_count_rate = bkg_count / arcsecond_area
+            final_count_rate = area_count_rate / self.exposure['B01'] / u.second
+            background_rates[f"{elow}-{ehigh}"].append(final_count_rate)
+        
+        rate_string = ""
+        for bound in background_rates:
+            for val in background_rates[bound]:
+                rate_string += f"{val.value} "
+        with open(self._refpath + "photometry/background_rates.txt", 'w') as file:
+            file.write(rate_string)
 
 
     def sliding_cell_detection(self):
         """
-        The sliding cell detection call on the temporal binned data.
+        The base sliding cell detection call on the temporal binned data.
         """
         from astropy.io.fits import getdata
 
@@ -982,10 +1039,10 @@ class NuAnalysis(Observation):
             file.write("PROCESSING COMPLETE")
         os.chdir(self._mainpath)
 
-    
+
     def detection_merging(self):
         """
-        Performs the first round of detection redundancy culling on detections caught by the sliding cell algorithm
+        Performs the first round of detection redundancy culling on detections caught by the sliding cell algorithm.
         """
 
         for channel in self._phi_channels:
@@ -1026,11 +1083,11 @@ class NuAnalysis(Observation):
         self.event_extraction()
         self.sliding_cell_detection()
         self.detection_merging()
-        
+
 
     def detection_summary(self):
         """
-        
+        Provides a brief text summary on the detection results for each PI channel.
         """
         for channel in self._phi_channels:
             detections = self.detection_dir_processing(channel)
@@ -1041,8 +1098,10 @@ class NuAnalysis(Observation):
             print(f"PI Channels: {channel[0]}-{channel[1]} -- {n_det} detections found.")
 
 
-
     def process_detections(self):
+        """
+        Calls ``nuproducts`` on detections.
+        """
         for channel in self._phi_channels:
             detections = self.detection_dir_processing(channel)
             if detections == None:
@@ -1065,7 +1124,7 @@ class NuAnalysis(Observation):
         Returns
         -------
         dict
-            a dictionary containing the following keys: `INDEX`, `COUNTS`, `XPIX`, `YPIX`, `VIGCOR`, 
+            A dictionary containing the following keys: `INDEX`, `COUNTS`, `XPIX`, `YPIX`, `VIGCOR`, 
             `RA`, `DEC`, `ERR`, `HBOX`, `PROB`, `SNR`. A description of these keys is below:
 
             INDEX : the number associated with this detection as a sort of 'detection id'
@@ -1079,6 +1138,9 @@ class NuAnalysis(Observation):
             HBOX : 
             PROB : 
             SNR : the snr calculated for this detection
+            
+        None
+            In the event that the unique merger file is not found.
 
         RAISES
         ------
@@ -1087,10 +1149,12 @@ class NuAnalysis(Observation):
 
         detpath = os.path.join(self._detpath, f"{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}")
         filepath = os.path.join(detpath, "mrg.txt")
+        
         if not os.path.isdir(detpath):
             return None
         if not os.path.isfile(filepath):
             return None           
+        
         with open(filepath) as detections:
             detect_info = {}
             detect_info["INDEX"] = []
@@ -1123,8 +1187,23 @@ class NuAnalysis(Observation):
 
 
     def read_detection_dir(self, bounds):
+        """
+        Reads in the individual detection files for the given PI bounds. The detections are then aggregated into an 
+        Astropy table and returned.
+        
+        Arguments
+        ---------
+        
+        
+        Returns
+        -------
+        """
         detpath = os.path.relpath(os.path.join(self._detpath, f"{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}"))
         det_files = glob.glob(os.path.join(detpath, "*.det"))
+        
+        if len(det_files) == 0:
+            return None
+        
         detect_info = {}
         
         for file in det_files:
@@ -1189,25 +1268,28 @@ class NuAnalysis(Observation):
             if self._source_position.separation(detect_position).arcsec > self.rlimit:
                 for key in detect_info:
                     trimmed_detect_info[key].append(detect_info[key][int(i) - 1])
+                    
+        if len(trimmed_detect_info["INDEX"]) == 0:
+            return None
         return trimmed_detect_info
     
     
     def detection_dir_processing(self, bounds):
         
-        # Read in unique detection information
+        # Read in unique detection information, return None if not present
         unique_detect_info = self.read_unique_detections(bounds)
-        
         if unique_detect_info == None:
             return None
 
-        # Read in all detections for a given PI channel range
+        # Read in all detections for a given PI channel range, return None if not present
         all_detect_info = self.read_detection_dir(bounds)
-        n_all_det = 0
-        for time in all_detect_info:
-            n_all_det += len(all_detect_info[time]["INDEX"])
-
-        # Begin by eliminating the main source
+        if all_detect_info == None:
+            return None
+        
+        # Eliminated detections within main source, if none are left, return None
         trimmed_detect_info = self.remove_main_source(unique_detect_info)
+        if trimmed_detect_info == None:
+            return None
 
         # Now remove duplicates and save time slots
         trimmed_all_info = {}
@@ -1233,12 +1315,20 @@ class NuAnalysis(Observation):
 
         for channel in self._phi_channels:
             trimmed_all_info = self.detection_dir_processing(channel)
+            if trimmed_all_info == None:
+                print("No valid ximage detections found!")
+                return None
             if trimmed_all_info != None:
                 n_obj = len(trimmed_all_info["INDEX"])
 
-        reduced_detections, tkeys = self.verify_dual_detection()
+        reduced_detections, tkeys = self.basic_detection_stats()
+        
+        if reduced_detections == None:
+            return None
+        
+        # Populate dictionary with aggregated information
         trimmed_all_info = {}
-        if reduced_detections != None and tkeys != None:
+        if reduced_detections != None:
             for key in tkeys:
                 trimmed_all_info[key] = []
             key_map = {}
@@ -1250,12 +1340,11 @@ class NuAnalysis(Observation):
                 for idx in range(len(tkeys)):
                     trimmed_all_info[tkeys[idx]].append(reduced_detections[det][idx])
 
-            # Applying table corrections.
+            # Applying table indexing corrections.
             n_obj = len(trimmed_all_info["RA"])
             trimmed_all_info["INDEX"] = list(range(1, n_obj + 1))
             
-            
-            # Construct and write table
+            # Write table to an Astropy table object
             detect_table = Table()
             for key in trimmed_all_info:
                 detect_table[key] = trimmed_all_info[key]
@@ -1270,6 +1359,18 @@ class NuAnalysis(Observation):
 
 
     def nuproducts(self, detect_info, pi_bounds):
+        """
+        
+
+        Arguments
+        ---------
+            detect_info (_type_): _description_
+            pi_bounds (_type_): _description_
+
+        Return
+        ------
+            _type_: _description_
+        """
         if detect_info == None:
             return None
 
@@ -1450,34 +1551,44 @@ class NuAnalysis(Observation):
             plt.close()
 
 
-    def verify_dual_detection(self):
+    def basic_detection_stats(self):
         """
-        Performs a dual instrument test on detections to further remove weak 
-        detections.
+        Performs some simple statistics on each detection and corrects some Astropy table formatting
         """
-
+        
         total_detections = {}
-        tkeys = None 
         for channel in self._phi_channels:
             trimmed_all_info = self.detection_dir_processing(channel)
+            
+            if trimmed_all_info == None:
+                print("basic_detection_stats: No valid detections inputted!")
+                continue
             if trimmed_all_info != None:
                 
-                # Applying table corrections.
-                
+                # Reindexing all detections
                 n_obj = len(trimmed_all_info["INDEX"])
                 trimmed_all_info["INDEX"] = list(range(1, n_obj + 1))
+                
+                # Formatting time ranges into separate columns
                 t_starts = [val[0].replace("nu_", '') for val in trimmed_all_info["TIMES"]]
                 t_stops = [val[1] for val in trimmed_all_info["TIMES"]]
                 trimmed_all_info["TSTART"] = t_starts
                 trimmed_all_info["TSTOP"] = t_stops
+                
+                # Formatting counts and count errors into separate columns
                 count_vals = [float(counts.split('+/-')[0]) for counts in trimmed_all_info["COUNTS"]]
                 count_err_vals = [float(counts.split('+/-')[1]) for counts in trimmed_all_info["COUNTS"]]
                 trimmed_all_info["COUNTS"] = count_vals
                 trimmed_all_info["COUNTSERR"] = count_err_vals
+                
+                # Adding seqid and PI channel information for each detection
                 trimmed_all_info["SEQID"] = [self._seqid for i in range(n_obj)]
                 trimmed_all_info["BOUND"] = [f"{channel[0]}-{channel[1]}" for i in range(n_obj)]
+                
+                # Remove deprecated column
                 del trimmed_all_info["TIMES"]
                 
+                # Calculate separation distance from main source
                 seps = []
                 for i in range(len(trimmed_all_info["INDEX"])):
                     ra = trimmed_all_info['RA'][i]
@@ -1485,31 +1596,26 @@ class NuAnalysis(Observation):
                     detect_position = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg), frame='fk5')
                     seps.append(self._source_position.separation(detect_position).arcsec)
                 trimmed_all_info["SEP"] = np.array(seps)
+                
+                # Adding source position information for future use
                 trimmed_all_info["SRCRA"] = [self.source_position.ra.deg for _ in range(n_obj)]
                 trimmed_all_info["SRCDEC"] = [self.source_position.dec.deg for _ in range(n_obj)]
-                #tkeys = list(trimmed_all_info.keys()) 
+                
+                # Acquire all keys in final dictionary
                 tkeys = []
                 for key in trimmed_all_info:
                     tkeys.append(key)
-                #tkeys.append('ACOUNTS')
-                #tkeys.append('BCOUNTS')
-                    
                 
-                flag = True
+                # Aggregating detection details across all PI channels
                 for idx in tqdm(range(len(trimmed_all_info["INDEX"]))):
-                    #flag, counts_A, counts_B = self.slide_cell_verification(trimmed_all_info["XPIX"][idx], 
-                    #                                    trimmed_all_info["YPIX"][idx], 
-                    #                                    trimmed_all_info["TSTART"][idx], 
-                    #                                    trimmed_all_info["TSTOP"][idx],
-                    #                                    channel)
-                    if flag:
-                        values = []
-                        for key in trimmed_all_info:
-                            values.append(trimmed_all_info[key][idx])
-                        #values.append(counts_A)
-                        #values.append(counts_B)
-                        total_detections[len(total_detections)] = values
+                    values = []
+                    for key in trimmed_all_info:
+                        values.append(trimmed_all_info[key][idx])
+                    total_detections[len(total_detections)] = values
+
                     
+        if len(total_detections.keys()) == 0:
+            return None, None
         return total_detections, tkeys
 
 
@@ -1675,7 +1781,7 @@ class NuAnalysis(Observation):
 
         for idx in tqdm(range(len(data_table['INDEX']))):
             
-            if len(data_table['INDEX']) > 1000:
+            if len(data_table['INDEX']) > 800:
                 return
             detect_position = SkyCoord(f"{data_table['RA'][idx]} {data_table['DEC'][idx]}", unit=(u.hourangle, u.deg), frame='fk5')
             det_x = detect_position.ra.deg
@@ -1719,7 +1825,10 @@ class NuAnalysis(Observation):
                 continue
             
             res = poisson_means_test(int(actual_counts.value), effective_exposure_time, int(src_predict.value), effective_exposure_time)
-            if res.pvalue < 0.001:
+            if float(data_table["XPIX"][idx]) < 520 and float(data_table["XPIX"][idx]) > 480:
+                if float(data_table["YPIX"][idx]) < 389 and float(data_table["YPIX"][idx]) > 360:
+                    print(res.pvalue)
+            if res.pvalue < 0.01:
                 passing += 1
                 valid_indices.append(idx)
                 det_xpix.append(det_x)
@@ -2087,7 +2196,7 @@ class NuAnalysis(Observation):
         
         # Import current detections
         NoneType = type(None)
-        detections, flag, filey = self.read_final_detections()
+        detections, flag, filey = self.read_final_detections(detectiontype="poisson")
         
         # If no detections are found, run the default image display method
         if type(detections) == NoneType:
@@ -2110,9 +2219,9 @@ class NuAnalysis(Observation):
 
             # Loop through detections and plot
             
-            x_pix = detections['XPIX']
+            x_pix = detections['DET1X']
             x_pi = [float(pix) for pix in x_pix]
-            y_pix = detections['YPIX']
+            y_pix = detections['DET1Y']
             y_pi = [float(pix) for pix in y_pix]
             probs = np.array(detections['PROB'])
             probs_pi = [float(prob) for prob in probs]
@@ -2159,55 +2268,145 @@ class NuAnalysis(Observation):
         and flags detections which where located within any identified regions.
         """
         from astropy.io.fits import getdata
+        from regions import Regions
         
+        # Import current detections
+        NoneType = type(None)
+        detections, flag, filename = self.read_final_detections(detectiontype="basicdet1")
+                
+        # If no detections are found, stop program
+        if type(detections) == NoneType:
+            return
+        if len(detections["INDEX"]) == 0:
+            return
+                
         with open("/Users/jcj/Documents/research/nustar/nuanalysis/straydir.txt") as file:
             data = file.readlines()
-            
-        for line in data:
+
+        # Make a clone of the table for record keeping and iteration            
+        detect_table = Table()
+        for key in detections.columns:
+            detect_table[key] = detections[key]
+        detect_table.write(os.path.join(self._detpath, f"{self._dtime}_straycut_basicdet1.tbl"), format='ipac', overwrite=True)
+        
+        # Iterate through strayfiles
+        for line in tqdm(data):
             strayinfo = line.split()
             if strayinfo[1] == self._seqid:
-                reg_file = os.path.join("./Volumes/data_ssd_1/bifrost_data/straycat/", strayinfo[0])
                 print(f"Match found! {strayinfo[1]}")
-                self.generate_detector_images()
-                det1_data = getdata(os.path.join(self._impath, "nu80102048008A01_cl_2.96to78.96keV_det1.fits"))
                 
-                # Import current detections
-                NoneType = type(None)
-                detections, flag, filey = self.read_final_detections()
+                # Read in region file
+                reg_file = os.path.join("/Volumes/data_ssd_2/straycat/", strayinfo[0])
+                region_list = Regions.read(reg_file, format="ds9")
+                with open(reg_file, 'r') as filey:
+                    reg_info = filey.readlines()
                 
-                # If no detections are found, run the default image display method
-                if type(detections) == NoneType:
-                    #self.display_image()
-                    return
+                # Ensure det1 images are made
+                # self.generate_detector_images()
+                
+                # Read in mask constructables
+                construct = []
+                flag = False
+                for line in reg_info:
+                    if flag:
+                        if line[0] == '-':
+                            construct.append('-')
+                        else:
+                            construct.append('+')
+                    if line == "image\n":
+                        flag = True
+
+                # Trivial single case
+                if len(region_list) == 1:
+                    pos = region_list[0].center.xy
+                    radius = region_list[0].radius
+                    src_x = pos[0]
+                    src_y = pos[1]
+                    mask = Point(src_x, src_y).buffer(radius, resolution=1000)
+                    
+                # Multi region file case
+                if len(region_list) > 1:
+                    pos = region_list[0].center.xy
+                    radius = region_list[0].radius
+                    src_x = pos[0]
+                    src_y = pos[1]
+                    mask = Point(src_x, src_y).buffer(radius, resolution=1000)
+                    
+                    # Construct the full region
+                    for idx, region in enumerate(region_list):
+                        if idx == 0:
+                            continue 
+                        print(type(region))
+                        if construct[idx] == '+':
+                            pos = region.center.xy
+                            radius = region.radius
+                            src_x = pos[0]
+                            src_y = pos[1]
+                            mask_add = Point(src_x, src_y).buffer(radius, resolution=1000)
+                            mask = mask.union(mask_add)
+                            
+                        if construct[idx] == '-':
+                            pos = region.center.xy
+                            radius = region.radius
+                            src_x = pos[0]
+                            src_y = pos[1]
+                            mask_subtract = Point(src_x, src_y).buffer(radius, resolution=1000)
+                            mask = mask.difference(mask_subtract)
+
+                # Optional plotting mechanism
+                #fig, ax = plt.subplots()
+                #plot_polygon(mask, ax=ax, add_points=False)
+                #plt.xlim(0, 300)
+                #plt.ylim(0, 300)
+                #plt.show()
+                
+                # Read in all detections
+                detpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_straycut_basicdet1.tbl"))
+                detections = Table.read(detpath, format='ipac')
+                
+                # Terminate early if iteration weeds out all detections
                 if len(detections["INDEX"]) == 0:
-                    #self.display_image()
+                    print("All detections eliminated!")
                     return
-                else:
-                    fig = plt.figure()
-                    ax = fig.add_subplot()
-                    ax.set_facecolor('white')
-                    fig.patch.set_facecolor('black')
-                    im = ax.imshow(det1_data, origin='lower', norm=matplotlib.colors.LogNorm())
-                    circle = Point(self._source_pix_coordinates[0][0], self._source_pix_coordinates[0][1]).buffer(self.rlimit / 2.46, resolution=1000)
-                    plot_polygon(circle, ax=ax, add_points=False, color="yellow")
-
-                    # Loop through detections and plot
+                
+                # Initialize new table with empty columns
+                detect_table = Table()
+                for key in detections.columns:
+                    detect_table[key] = []
                     
+                # Test
+                filtered_detections = {}
+                for col in detections.colnames:
+                    filtered_detections[col] = []
+                
+                # Iterate through detections and record those that pass inspection
+                count = 0
+                for idx in tqdm(range(len(detections["INDEX"]))):
+                    detx = detections["DET1X"][idx]
+                    dety = detections["DET1Y"][idx]
+                    det_point = Point(detx, dety).buffer(1, resolution=1000)
                     
-                    ax.tick_params(color='white', labelcolor='white')
-                    ax.tick_params(axis='both', which='major', labelsize=15)
-                    im.axes.tick_params(color='white', labelcolor='white')
+                    if mask.contains(det_point):
+                        count += 1
+                        continue
+                    for col in detections.colnames:
+                        filtered_detections[col].append(detections[col][idx])
                     
-                    plt.grid(True)
-                    plt.xlabel('X Pixel', color='white', fontsize=18)
-                    plt.ylabel('Y Pixel', color='white', fontsize=18)
-                    #plt.xlim(250, 750)
-                    #plt.ylim(250, 750)
-                    
-
-                    plt.show()
-                    
-                    
+                detect_table = Table()
+                for key in filtered_detections:
+                    detect_table[key] = filtered_detections[key]
+                
+                print(f"Ratio of detections removed: {count/len(detections['INDEX'])}")
+                detect_table.write(os.path.join(self._detpath, f"{self._dtime}_straycut_basicdet1.tbl"), format='ipac', overwrite=True)
+                
+        # Create completion flag
+        os.chdir(self._evtpath)
+        with open(f"{self._dtime}_straycutbasic_flag.txt", 'w') as file:
+            file.write("PROCESSING COMPLETE")
+        os.chdir(self._mainpath)
+        return
+    
+    
     def convert_to_det1(self):
         
         # Display terminal
@@ -2257,6 +2456,114 @@ class NuAnalysis(Observation):
         # Create completion flag
         os.chdir(self._evtpath)
         with open(f"{self._dtime}_det1poisson_flag.txt", 'w') as file:
+            file.write("PROCESSING COMPLETE")
+        os.chdir(self._mainpath)
+        return
+    
+    
+    def convert_basic_to_det1(self):
+        
+        # Display terminal
+        print('#' * 90)
+        print(f"Converting Basic Detections to Det1 for SEQID: {self._seqid}")
+        print(f"Time scale: {self._dtime} seconds.")
+        print(f"Source Position: {self._source_pix_coordinates[0][0]}, {self._source_pix_coordinates[0][1]}")
+        print('#' * 90)
+        
+        detections, flag, filename = self.read_final_detections(detectiontype="basic")
+        
+        NoneType = type(None)
+        if type(detections) == NoneType:
+            # Create completion flag
+            os.chdir(self._evtpath)
+            with open(f"{self._dtime}_det1basic_flag.txt", 'w') as file:
+                file.write("PROCESSING COMPLETE")
+            os.chdir(self._mainpath)
+            return
+        if len(detections["INDEX"]) == 0:
+            # Create completion flag
+            os.chdir(self._evtpath)
+            with open(f"{self._dtime}_det1basic_flag.txt", 'w') as file:
+                file.write("PROCESSING COMPLETE")
+            os.chdir(self._mainpath)
+            return
+        
+        detx_list = []
+        dety_list = []
+        for idx in tqdm(range(len(detections["INDEX"]))):
+            if len(detections['INDEX']) > 800:
+                return
+            ra = detections["RA"][idx]
+            dec = detections["DEC"][idx]
+            detect_position = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg), frame='fk5')
+            ra = detect_position.ra.deg
+            dec = detect_position.dec.deg
+            outfile = self.sky_to_detector(ra, dec)
+            data = fits.getdata(outfile)
+            mean_detx = []
+            mean_dety = []
+            for datum in data:
+                mean_detx.append(float(datum[1]))
+                mean_dety.append(float(datum[2]))
+            detx = np.mean(mean_detx)
+            dety = np.mean(mean_dety)
+            print(detx)
+            detx_list.append(detx)
+            dety_list.append(dety)
+            os.remove(outfile)
+        detections["DET1X"] = detx_list
+        detections["DET1Y"] = dety_list
+        detections.write(os.path.join(self._detpath, f"{self._dtime}_basic_det1.tbl"), format='ipac', overwrite=True)
+        
+        # Create completion flag
+        os.chdir(self._evtpath)
+        with open(f"{self._dtime}_det1basic_flag.txt", 'w') as file:
+            file.write("PROCESSING COMPLETE")
+        os.chdir(self._mainpath)
+        return
+
+
+    def main_source_removal(self):
+        """
+        Checks if this Observation was analyzed in any of the StrayCats surveys 
+        and flags detections which where located within any identified regions.
+        """
+        from astropy.io.fits import getdata
+        from regions import Regions
+        
+        # Import current detections
+        NoneType = type(None)
+        detections, flag, filename = self.read_final_detections(detectiontype="basicdet1")
+        
+        # If no detections are found, stop program
+        if type(detections) == NoneType:
+            return
+        if len(detections["INDEX"]) == 0:
+            return
+        
+        valid_indices = []
+        for idx, val in tqdm(enumerate(detections['XPIX'])):
+            pix_x = detections['XPIX'][idx]
+            pix_y = detections['YPIX'][idx]
+            if np.sqrt((float(pix_x) - float(self._source_pix_coordinates[0][0]))**2 + (float(pix_y) - float(self._source_pix_coordinates[0][1]))**2) > (180) / 2.5:
+                valid_indices.append(idx)    
+        
+        filtered_detections = {}
+        for col in detections.colnames:
+            filtered_detections[col] = []
+        for col in detections.colnames:
+            for idx in valid_indices:
+                filtered_detections[col].append(detections[col][idx])
+        
+        detect_table = Table()
+        for key in filtered_detections:
+            detect_table[key] = filtered_detections[key]
+        finalpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_basicdet_main3.tbl"))
+        detect_table.write(finalpath, format='ipac', overwrite=True)
+        
+        # Create completion flag
+        os.chdir(self._evtpath)
+        with open(f"{self._dtime}_mainsourceremoval_flag.txt", 'w') as file:
             file.write("PROCESSING COMPLETE")
         os.chdir(self._mainpath)
         return
