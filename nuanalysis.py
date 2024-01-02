@@ -2475,8 +2475,8 @@ class NuAnalysis(Observation):
         detx_list = []
         dety_list = []
         for idx in tqdm(range(len(detections["INDEX"]))):
-            if len(detections['INDEX']) > 800:
-                return
+            #if len(detections['INDEX']) > 800:
+            #    return
             ra = detections["RA"][idx]
             dec = detections["DEC"][idx]
             detect_position = SkyCoord(f"{ra} {dec}", unit=(u.hourangle, u.deg), frame='fk5')

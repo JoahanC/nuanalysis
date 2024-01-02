@@ -1,103 +1,350 @@
-from astropy.table import QTable, Table, Column, vstack
-#from astroquery.vizier import Vizier
-import matplotlib.patches as mpatches
+"""
+This file generates basic statistics on all current detections listed under the ssdx format.
+"""
+from astropy.table import Table
 import matplotlib.lines as mlines
-import matplotlib
 from astropy.coordinates import SkyCoord
 from astropy import units as u
-from tqdm import tqdm
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 
-table_fivek = Table.read("complete_5000.tbl", format='ipac')
-table_onek = Table.read("complete_1000.tbl", format='ipac')
-table_halfk = Table.read("complete_500.tbl", format='ipac')
-ra_fivek = []
-dec_fivek = []
-source_ra_fivek = []
-source_dec_fivek = []
-pvals_fivek = []
+# Reading in data from ipac summary tables, this is for SSD1
+basic_table_fivek_1 = Table.read("ssd1_basic_5000_final.tbl", format='ipac')
+basic_table_onek_1 = Table.read("ssd1_basic_1000_final.tbl", format='ipac')
+basic_table_halfk_1 = Table.read("ssd1_basic_500_final.tbl", format='ipac')
+poisson_table_fivek_1 = Table.read("ssd1_poisson_5000_final.tbl", format='ipac')
+poisson_table_onek_1 = Table.read("ssd1_poisson_1000_final.tbl", format='ipac')
+poisson_table_halfk_1 = Table.read("ssd1_poisson_500_final.tbl", format='ipac')
+# Reading in data from ipac summary tables, this is for SSD2
+basic_table_fivek_2 = Table.read("ssd2_basic_5000_final.tbl", format='ipac')
+basic_table_onek_2 = Table.read("ssd2_basic_1000_final.tbl", format='ipac')
+basic_table_halfk_2 = Table.read("ssd2_basic_500_final.tbl", format='ipac')
+poisson_table_fivek_2 = Table.read("ssd2_poisson_5000_final.tbl", format='ipac')
+poisson_table_onek_2 = Table.read("ssd2_poisson_1000_final.tbl", format='ipac')
+poisson_table_halfk_2 = Table.read("ssd2_poisson_500_final.tbl", format='ipac')
 
-ra_onek = []
-dec_onek = []
-source_ra_onek = []
-source_dec_onek = []
-pvals_onek = []
+"""sep = 210
+mask_basic_table_fivek_1 = basic_table_fivek_1['SEP'] > sep
+mask_basic_table_onek_1 = basic_table_onek_1['SEP'] > sep
+mask_basic_table_halfk_1 = basic_table_halfk_1['SEP'] > sep
+mask_basic_table_fivek_2 = basic_table_fivek_2['SEP'] > sep
+mask_basic_table_onek_2 = basic_table_onek_2['SEP'] > sep
+mask_basic_table_halfk_2 = basic_table_halfk_2['SEP'] > sep
+mask_poisson_table_fivek_1 = poisson_table_fivek_1['SEP'] > sep
+mask_poisson_table_onek_1 = poisson_table_onek_1['SEP'] > sep
+mask_poisson_table_halfk_1 = poisson_table_halfk_1['SEP'] > sep
+mask_poisson_table_fivek_2 = poisson_table_fivek_2['SEP'] > sep
+mask_poisson_table_onek_2 = poisson_table_onek_2['SEP'] > sep
+mask_poisson_table_halfk_2 = poisson_table_halfk_2['SEP'] > sep
 
-ra_halfk = []
-dec_halfk = []
-source_ra_halfk = []
-source_dec_halfk = []
-pvals_halfk = []
+basic_table_fivek_1 = basic_table_fivek_1[mask_basic_table_fivek_1]
+basic_table_onek_1 = basic_table_onek_1[mask_basic_table_onek_1]
+basic_table_halfk_1 = basic_table_halfk_1[mask_basic_table_halfk_1]
+basic_table_fivek_2 = basic_table_fivek_2[mask_basic_table_fivek_2]
+basic_table_onek_2 = basic_table_onek_2[mask_basic_table_onek_2]
+basic_table_halfk_2 = basic_table_halfk_2[mask_basic_table_halfk_2]
+poisson_table_fivek_1 = poisson_table_fivek_1[mask_poisson_table_fivek_1]
+poisson_table_onek_1 = poisson_table_onek_1[mask_poisson_table_onek_1]
+poisson_table_halfk_1 = poisson_table_halfk_1[mask_poisson_table_halfk_1]
+poisson_table_fivek_2 = poisson_table_fivek_2[mask_poisson_table_fivek_2]
+poisson_table_onek_2 = poisson_table_onek_2[mask_poisson_table_onek_2]
+poisson_table_halfk_2 = poisson_table_halfk_2[mask_poisson_table_halfk_2]"""
+
+# Initialize lists for storing position information for the sources located in the summary tables for SSD1
+basic_source_ra_fivek_1 = []
+basic_source_dec_fivek_1 = []
+basic_source_ra_onek_1 = []
+basic_source_dec_onek_1 = []
+basic_source_ra_halfk_1 = []
+basic_source_dec_halfk_1 = []
+poisson_source_ra_fivek_1 = []
+poisson_source_dec_fivek_1 = []
+poisson_source_ra_onek_1 = []
+poisson_source_dec_onek_1 = []
+poisson_source_ra_halfk_1 = []
+poisson_source_dec_halfk_1 = []
+
+# Initialize lists for storing position information for the sources located in the summary tables for SSD2
+basic_source_ra_fivek_2 = []
+basic_source_dec_fivek_2 = []
+basic_source_ra_onek_2 = []
+basic_source_dec_onek_2 = []
+basic_source_ra_halfk_2 = []
+basic_source_dec_halfk_2 = []
+poisson_source_ra_fivek_2 = []
+poisson_source_dec_fivek_2 = []
+poisson_source_ra_onek_2 = []
+poisson_source_dec_onek_2 = []
+poisson_source_ra_halfk_2 = []
+poisson_source_dec_halfk_2 = []
+
+# Stores the number of targets listed among the summary tables, the [:-2] is to ensure that SEQID 
+# sequences are properly counted and not overcounted for SSD1
+basic_target_fivek_1 = []
+for seqid in basic_table_fivek_1["SEQID"]:
+    basic_target_fivek_1.append(seqid[:-2])
+basic_target_onek_1 = []
+for seqid in basic_table_onek_1["SEQID"]:
+    basic_target_onek_1.append(seqid[:-2])
+basic_target_halfk_1 = []
+for seqid in basic_table_halfk_1["SEQID"]:
+    basic_target_halfk_1.append(seqid[:-2])
+poisson_target_fivek_1 = []
+for seqid in poisson_table_fivek_1["SEQID"]:
+    poisson_target_fivek_1.append(seqid[:-2])
+poisson_target_onek_1 = []
+for seqid in poisson_table_onek_1["SEQID"]:
+    poisson_target_onek_1.append(seqid[:-2])
+poisson_target_halfk_1 = []
+for seqid in poisson_table_halfk_1["SEQID"]:
+    poisson_target_halfk_1.append(seqid[:-2])
+
+# Stores the number of targets listed among the summary tables, the [:-2] is to ensure that SEQID 
+# sequences are properly counted and not overcounted for SSD2
+basic_target_fivek_2 = []
+for seqid in basic_table_fivek_2["SEQID"]:
+    basic_target_fivek_2.append(seqid[:-2])
+basic_target_onek_2 = []
+for seqid in basic_table_onek_2["SEQID"]:
+    basic_target_onek_2.append(seqid[:-2])
+basic_target_halfk_2 = []
+for seqid in basic_table_halfk_2["SEQID"]:
+    basic_target_halfk_2.append(seqid[:-2])
+poisson_target_fivek_2 = []
+for seqid in poisson_table_fivek_2["SEQID"]:
+    poisson_target_fivek_2.append(seqid[:-2])
+poisson_target_onek_2 = []
+for seqid in poisson_table_onek_2["SEQID"]:
+    poisson_target_onek_2.append(seqid[:-2])
+poisson_target_halfk_2 = []
+for seqid in poisson_table_halfk_2["SEQID"]:
+    poisson_target_halfk_2.append(seqid[:-2])
+
+# Calculate the total number of SEQIDS and unique targets identified
+basic_n_seqids_1 = len(set(basic_table_fivek_1["SEQID"]).union(set(basic_table_onek_1["SEQID"])).union(set(basic_table_halfk_1["SEQID"])))
+basic_n_targets_1 = len(set(basic_target_fivek_1).union(set(basic_target_onek_1)).union(set(basic_target_halfk_1)))
+basic_n_seqids_2 = len(set(basic_table_fivek_2["SEQID"]).union(set(basic_table_onek_2["SEQID"])).union(set(basic_table_halfk_2["SEQID"])))
+basic_n_targets_2 = len(set(basic_target_fivek_2).union(set(basic_target_onek_2)).union(set(basic_target_halfk_2)))
+basic_all_targets = set(basic_target_fivek_1).union(set(basic_target_onek_1)).union(set(basic_target_halfk_1)).union(set(basic_target_fivek_2)).union(set(basic_target_onek_2)).union(set(basic_target_halfk_2))
+poisson_n_seqids_1 = len(set(poisson_table_fivek_1["SEQID"]).union(set(poisson_table_onek_1["SEQID"])).union(set(poisson_table_halfk_1["SEQID"])))
+poisson_n_targets_1 = len(set(poisson_target_fivek_1).union(set(poisson_target_onek_1)).union(set(poisson_target_halfk_1)))
+poisson_n_seqids_2 = len(set(poisson_table_fivek_2["SEQID"]).union(set(poisson_table_onek_2["SEQID"])).union(set(poisson_table_halfk_2["SEQID"])))
+poisson_n_targets_2 = len(set(poisson_target_fivek_2).union(set(poisson_target_onek_2)).union(set(poisson_target_halfk_2)))
+poisson_all_targets = set(poisson_target_fivek_1).union(set(poisson_target_onek_1)).union(set(poisson_target_halfk_1)).union(set(poisson_target_fivek_2)).union(set(poisson_target_onek_2)).union(set(poisson_target_halfk_2))
+
+# Calculate the total number of targets per timescale class
+basic_n_target_500 = len(set(basic_target_halfk_2).union(set(basic_target_halfk_1)))
+basic_n_target_1000 = len(set(basic_target_onek_2).union(set(basic_target_onek_1)))
+basic_n_target_5000 = len(set(basic_target_fivek_2).union(set(basic_target_fivek_1)))
+poisson_n_target_500 = len(set(poisson_target_halfk_2).union(set(poisson_target_halfk_1)))
+poisson_n_target_1000 = len(set(poisson_target_onek_2).union(set(poisson_target_onek_1)))
+poisson_n_target_5000 = len(set(poisson_target_fivek_2).union(set(poisson_target_fivek_1)))
+
+# Create list of source ras and sources decs from all detections
+basic_added_set = []
+basic_src_ras = []
+basic_src_decs = []
+for idx, seqid in enumerate(basic_table_fivek_1['SEQID']):
+    if seqid[:-2] not in basic_added_set:
+        basic_added_set.append(seqid[:-2])
+        basic_src_ras.append(basic_table_fivek_1["RA"][idx])
+        basic_src_decs.append(basic_table_fivek_1["DEC"][idx])
+for idx, seqid in enumerate(basic_table_onek_1['SEQID']):
+    if seqid[:-2] not in basic_added_set:
+        basic_added_set.append(seqid[:-2])
+        basic_src_ras.append(basic_table_onek_1["RA"][idx])
+        basic_src_decs.append(basic_table_onek_1["DEC"][idx])
+for idx, seqid in enumerate(basic_table_halfk_1['SEQID']):
+    if seqid[:-2] not in basic_added_set:
+        basic_added_set.append(seqid[:-2])
+        basic_src_ras.append(basic_table_halfk_1["RA"][idx])
+        basic_src_decs.append(basic_table_halfk_1["DEC"][idx])
+for idx, seqid in enumerate(basic_table_fivek_2['SEQID']):
+    if seqid[:-2] not in basic_added_set:
+        basic_added_set.append(seqid[:-2])
+        basic_src_ras.append(basic_table_fivek_2["RA"][idx])
+        basic_src_decs.append(basic_table_fivek_2["DEC"][idx])
+for idx, seqid in enumerate(basic_table_onek_2['SEQID']):
+    if seqid[:-2] not in basic_added_set:
+        basic_added_set.append(seqid[:-2])
+        basic_src_ras.append(basic_table_onek_2["RA"][idx])
+        basic_src_decs.append(basic_table_onek_2["DEC"][idx])
+for idx, seqid in enumerate(basic_table_halfk_2['SEQID']):
+    if seqid[:-2] not in basic_added_set:
+        basic_added_set.append(seqid[:-2])
+        basic_src_ras.append(basic_table_halfk_2["RA"][idx])
+        basic_src_decs.append(basic_table_halfk_2["DEC"][idx])
+poisson_added_set = []
+poisson_src_ras = []
+poisson_src_decs = []
+for idx, seqid in enumerate(poisson_table_fivek_1['SEQID']):
+    if seqid[:-2] not in poisson_added_set:
+        poisson_added_set.append(seqid[:-2])
+        poisson_src_ras.append(poisson_table_fivek_1["RA"][idx])
+        poisson_src_decs.append(poisson_table_fivek_1["DEC"][idx])
+for idx, seqid in enumerate(poisson_table_onek_1['SEQID']):
+    if seqid[:-2] not in poisson_added_set:
+        poisson_added_set.append(seqid[:-2])
+        poisson_src_ras.append(poisson_table_onek_1["RA"][idx])
+        poisson_src_decs.append(poisson_table_onek_1["DEC"][idx])
+for idx, seqid in enumerate(poisson_table_halfk_1['SEQID']):
+    if seqid[:-2] not in poisson_added_set:
+        poisson_added_set.append(seqid[:-2])
+        poisson_src_ras.append(poisson_table_halfk_1["RA"][idx])
+        poisson_src_decs.append(poisson_table_halfk_1["DEC"][idx])
+for idx, seqid in enumerate(poisson_table_fivek_2['SEQID']):
+    if seqid[:-2] not in poisson_added_set:
+        poisson_added_set.append(seqid[:-2])
+        poisson_src_ras.append(poisson_table_fivek_2["RA"][idx])
+        poisson_src_decs.append(poisson_table_fivek_2["DEC"][idx])
+for idx, seqid in enumerate(poisson_table_onek_2['SEQID']):
+    if seqid[:-2] not in poisson_added_set:
+        poisson_added_set.append(seqid[:-2])
+        poisson_src_ras.append(poisson_table_onek_2["RA"][idx])
+        poisson_src_decs.append(poisson_table_onek_2["DEC"][idx])
+for idx, seqid in enumerate(poisson_table_halfk_2['SEQID']):
+    if seqid[:-2] not in poisson_added_set:
+        poisson_added_set.append(seqid[:-2])
+        poisson_src_ras.append(poisson_table_halfk_2["RA"][idx])
+        poisson_src_decs.append(poisson_table_halfk_2["DEC"][idx])
+
+
+def discrete_cmap(N, base_cmap=None):
+    """Create an N-bin discrete colormap from the specified input map"""
+
+    # Note that if base_cmap is a string or None, you can simply do
+    #    return plt.cm.get_cmap(base_cmap, N)
+    # The following works for string, None, or a colormap instance:
+
+    base = plt.cm.get_cmap(base_cmap)
+    color_list = base(np.linspace(0, 1, N))
+    cmap_name = base.name + str(N)
+    return base.from_list(cmap_name, color_list, N)
+
+
+def sep_filter_detections(sep):
+    mask_basic_table_fivek_1 = basic_table_fivek_1['SEP'] > sep
+    mask_basic_table_onek_1 = basic_table_onek_1['SEP'] > sep
+    mask_basic_table_halfk_1 = basic_table_halfk_1['SEP'] > sep
+    mask_basic_table_fivek_2 = basic_table_fivek_2['SEP'] > sep
+    mask_basic_table_onek_2 = basic_table_onek_2['SEP'] > sep
+    mask_basic_table_halfk_2 = basic_table_halfk_2['SEP'] > sep
+
+    sep_basic_table_fivek_1 = basic_table_fivek_1[mask_basic_table_fivek_1]
+    sep_basic_table_onek_1 = basic_table_onek_1[mask_basic_table_onek_1]
+    sep_basic_table_halfk_1 = basic_table_halfk_1[mask_basic_table_halfk_1]
+    sep_basic_table_fivek_2 = basic_table_fivek_2[mask_basic_table_fivek_2]
+    sep_basic_table_onek_2 = basic_table_onek_2[mask_basic_table_onek_2]
+    sep_basic_table_halfk_2 = basic_table_halfk_2[mask_basic_table_halfk_2]
+    
+    
+    # Create list of source ras and sources decs from all detections
+    sep_basic_added_set = []
+    sep_basic_src_ras = []
+    sep_basic_src_decs = []
+    for idx, seqid in enumerate(sep_basic_table_fivek_1['SEQID']):
+        if seqid[:-2] not in sep_basic_added_set:
+            sep_basic_added_set.append(seqid[:-2])
+            sep_basic_src_ras.append(sep_basic_table_fivek_1["RA"][idx])
+            sep_basic_src_decs.append(sep_basic_table_fivek_1["DEC"][idx])
+    for idx, seqid in enumerate(sep_basic_table_onek_1['SEQID']):
+        if seqid[:-2] not in sep_basic_added_set:
+            sep_basic_added_set.append(seqid[:-2])
+            sep_basic_src_ras.append(sep_basic_table_onek_1["RA"][idx])
+            sep_basic_src_decs.append(sep_basic_table_onek_1["DEC"][idx])
+    for idx, seqid in enumerate(sep_basic_table_halfk_1['SEQID']):
+        if seqid[:-2] not in sep_basic_added_set:
+            sep_basic_added_set.append(seqid[:-2])
+            sep_basic_src_ras.append(sep_basic_table_halfk_1["RA"][idx])
+            sep_basic_src_decs.append(sep_basic_table_halfk_1["DEC"][idx])
+    for idx, seqid in enumerate(sep_basic_table_fivek_2['SEQID']):
+        if seqid[:-2] not in sep_basic_added_set:
+            sep_basic_added_set.append(seqid[:-2])
+            sep_basic_src_ras.append(sep_basic_table_fivek_2["RA"][idx])
+            sep_basic_src_decs.append(sep_basic_table_fivek_2["DEC"][idx])
+    for idx, seqid in enumerate(sep_basic_table_onek_2['SEQID']):
+        if seqid[:-2] not in sep_basic_added_set:
+            sep_basic_added_set.append(seqid[:-2])
+            sep_basic_src_ras.append(sep_basic_table_onek_2["RA"][idx])
+            sep_basic_src_decs.append(sep_basic_table_onek_2["DEC"][idx])
+    for idx, seqid in enumerate(sep_basic_table_halfk_2['SEQID']):
+        if seqid[:-2] not in sep_basic_added_set:
+            sep_basic_added_set.append(seqid[:-2])
+            sep_basic_src_ras.append(sep_basic_table_halfk_2["RA"][idx])
+            sep_basic_src_decs.append(sep_basic_table_halfk_2["DEC"][idx])
+    
+    im_range = np.arange(0, 800, 1)
+    x_pix = np.array(sep_basic_table_halfk_1['XPIX'], dtype='f2')
+    y_pix = np.array(sep_basic_table_halfk_1['YPIX'], dtype='f2')
+    fig, ax = plt.subplots()
+    pixelplot = ax.hist2d(x_pix, y_pix, bins = [im_range, im_range], cmap=discrete_cmap(5, "gnuplot2"))
+    plt.xlim(250, 750)
+    plt.ylim(250, 750)
+    ax.set_xlabel("X Pixel")
+    ax.set_ylabel("Y Pixel")
+    ax.set_title("Net Detections per Pixel", loc="left")
+    ax.set_title(f"Sep: {sep} arcsec", loc="right")
+    cb = plt.colorbar(pixelplot[3], orientation='vertical')
+    plt.savefig(f"filter_{sep}.pdf", dpi=1500)
+    plt.close()
+
+    return None
+
+
+seps = [120, 150, 180, 210]
+for sep in seps:
+    sep_filter_detections(sep)
 
 fig, ax = plt.subplots(figsize=(12, 7), subplot_kw=dict(projection="aitoff"))
-fig.patch.set_facecolor('black')
-#ax.set_facecolor('gray')
-for idx in range(len(table_fivek['RA'])):
-    sk = SkyCoord(f"{table_fivek['RA'][idx]} {table_fivek['DEC'][idx]}", unit=(u.hourangle, u.deg))
-    ra_fivek.append(sk.galactic.l.deg)
-    dec_fivek.append(sk.galactic.b.deg)
-    mpos = SkyCoord(f"{table_fivek['SRCRA'][idx]} {table_fivek['SRCDEC'][idx]}", unit=(u.deg, u.deg))
-    source_ra_fivek.append(mpos.galactic.l.deg)
-    source_dec_fivek.append(mpos.galactic.b.deg)
-    pvals_fivek.append(table_fivek['PVAL'][idx])
-#ax.scatter(source_ra_fivek, source_dec_fivek, s=20, marker='o', color='green')
-cords1 = ax.scatter(ra_fivek, dec_fivek, s=40, marker='s', c=pvals_fivek, cmap='cool', norm=matplotlib.colors.LogNorm(), label="5000 sec")
 
-for idx in range(len(table_onek['RA'])):
-    sk = SkyCoord(f"{table_onek['RA'][idx]} {table_onek['DEC'][idx]}", unit=(u.hourangle, u.deg))
-    ra_onek.append(sk.galactic.l.deg)
-    dec_onek.append(sk.galactic.b.deg)
-    mpos = SkyCoord(f"{table_onek['SRCRA'][idx]} {table_onek['SRCDEC'][idx]}", unit=(u.deg, u.deg))
-    source_ra_fivek.append(mpos.galactic.l.deg)
-    source_dec_fivek.append(mpos.galactic.b.deg)
-    pvals_onek.append(table_onek['PVAL'][idx])
-#ax.scatter(source_ra_onek, source_dec_onek, s=20, marker='o', color='green')
-cords2 = ax.scatter(ra_onek, dec_onek, s=40, marker='d', c=pvals_onek, cmap='cool', norm=matplotlib.colors.LogNorm(), label="1000 sec")
+plot_basic_ras = []
+plot_basic_decs = []
+for idx in range(len(basic_added_set)):
+    sk = SkyCoord(f"{basic_src_ras[idx]} {basic_src_decs[idx]}", unit=(u.hourangle, u.deg), frame='fk5')
+    plot_basic_ras.append(sk.galactic.l.wrap_at('180d').radian)
+    plot_basic_decs.append(sk.galactic.b.radian)
+ax.scatter(plot_basic_ras, plot_basic_decs, s=30, marker='o', color='red')
+plot_poisson_ras = []
+plot_poisson_decs = []
+for idx in range(len(poisson_added_set)):
+    sk = SkyCoord(f"{poisson_src_ras[idx]} {poisson_src_decs[idx]}", unit=(u.hourangle, u.deg), frame='fk5')
+    plot_poisson_ras.append(sk.galactic.l.wrap_at('180d').radian)
+    plot_poisson_decs.append(sk.galactic.b.radian)
+ax.scatter(plot_poisson_ras, plot_poisson_decs, s=30, marker='o', color='blue')
+ax.set_ylabel(r"$b$", color='white', fontsize=18)
+ax.set_xlabel(r"$l$", color='white', fontsize=18)
+#ax.grid()
+#plt.show()
+square_fivek = mlines.Line2D([], [], color='red', marker='o', linestyle='None',
+                          markersize=10, label=f'Eliminated ximage detections')
+diamond_onek = mlines.Line2D([], [], color='blue', marker='o', linestyle='None',
+                          markersize=10, label=f'Remaining ximage detections')
 
-for idx in range(len(table_halfk['RA'])):
-    sk = SkyCoord(f"{table_halfk['RA'][idx]} {table_halfk['DEC'][idx]}", unit=(u.hourangle, u.deg))
-    ra_halfk.append(sk.galactic.l.deg)
-    dec_halfk.append(sk.galactic.b.deg)
-    mpos = SkyCoord(f"{table_halfk['SRCRA'][idx]} {table_halfk['SRCDEC'][idx]}", unit=(u.deg, u.deg))
-    source_ra_fivek.append(mpos.galactic.l.deg)
-    source_dec_fivek.append(mpos.galactic.b.deg)
-    pvals_halfk.append(table_halfk['PVAL'][idx])
-#ax.scatter(source_ra_halfk, source_dec_halfk, s=20, marker='o', color='green', label="Main Sources")
-cords3 = ax.scatter(ra_halfk, dec_halfk, s=40, marker='^', c=pvals_halfk, cmap='cool', norm=matplotlib.colors.LogNorm(), label="500 sec")
-
-cords3.axes.tick_params(color='white', labelcolor='white')
-
-ax.tick_params(axis='both', which='major', labelsize=15)
-ax.tick_params(axis='both', which='minor', labelsize=15)
-#lg = plt.legend()
-cb = plt.colorbar(cords1, orientation="horizontal", pad=0.08, shrink=0.7)
-cb.set_label('Probability', color='white', fontsize=15)
-cb.ax.xaxis.set_tick_params(color='white')
-cb.outline.set_edgecolor('white')
-
-#leg = ax.get_legend()
-#leg.legend_handles[0].set_color('black')
-#leg.legend_handles[1].set_color('black')
-
-square_fivek = mlines.Line2D([], [], color='black', marker='s', linestyle='None',
-                          markersize=10, label=f'5000 seconds; n = {len(table_fivek["RA"])}')
-diamond_onek = mlines.Line2D([], [], color='black', marker='d', linestyle='None',
-                          markersize=10, label=f'1000 seconds; n = {len(table_onek["RA"])}')
-triangle_halfk = mlines.Line2D([], [], color='black', marker='^', linestyle='None',
-                          markersize=10, label=f'500 seconds; n = {len(table_halfk["RA"])}')
-
-plt.legend(bbox_to_anchor=(1.05, 1), handles=[square_fivek, diamond_onek, triangle_halfk], loc='upper right', prop={'size': 15}, borderaxespad=-2)
-
-plt.setp(plt.getp(cb.ax.axes, 'xticklabels'), color='white', fontsize=15)
-plt.setp(plt.getp(cords3.axes, 'xticklabels'), color='black')
-#ax.set_title('Current Candidates', color='white', loc='right')
-#ax.set_ylabel(r"$b$", color='white', fontsize=18)
-#ax.set_xlabel(r"$l$", color='white', fontsize=18)
+plt.legend(bbox_to_anchor=(1.05, 1), handles=[square_fivek, diamond_onek], loc='upper right', prop={'size': 15}, borderaxespad=-2)
 ax.grid()
 plt.show()
-plt.savefig("candidates.pdf")
+
+
+
+im_range = np.arange(0, 800, 1)
+x_pix = np.array(basic_table_halfk_1['XPIX'], dtype='f2')
+y_pix = np.array(basic_table_halfk_1['YPIX'], dtype='f2')
+fig, ax = plt.subplots()
+pixelplot = ax.hist2d(x_pix, y_pix, bins = [im_range, im_range], cmap=discrete_cmap(6, "gnuplot2"))
+plt.xlim(250, 750)
+plt.ylim(250, 750)
+ax.set_xlabel("X Pixel")
+ax.set_ylabel("Y Pixel")
+ax.set_title("Net Detections per Pixel")
+cb = plt.colorbar(pixelplot[3], orientation='vertical')
+plt.show()
+
+
+
+
+
+
 
 
 """
