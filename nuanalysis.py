@@ -294,6 +294,7 @@ class NuAnalysis(Observation):
             intervals_p1.append(cur_int)
             cur_int += self._dtime
         intervals_p1.append(max_int)
+        self._start_intervals_pass1 = len(intervals_p1)
 
         # generate intervals for PASS 2
         intervals_p2 = []
@@ -304,6 +305,7 @@ class NuAnalysis(Observation):
             intervals_p2.append(cur_int)
             cur_int += self._dtime 
         intervals_p2.append(max_int)
+        self._start_intervals_pass2 = len(intervals_p2)
 
         # split data for PASS 1
         idx = 0
@@ -797,6 +799,157 @@ class NuAnalysis(Observation):
         # IO
         if savefig:
             plt.savefig("stacked_full.pdf", dpi=1000)
+        if display:
+            plt.show()
+    
+    
+    def display_strayimage(self, savefig=False, display=True, style="dark"):
+        """
+        Displays an image of the stacked full exposure image for this observation with the 
+        source labeled with a circular region and all observations for this specific 
+        observation labeled.
+        
+        Arguments
+        ---------
+        savefig : bool, optional
+            A flag determining whether to save the plot
+        display : bool, optional
+            A flag determining whether to display the plot in an interactive window
+        style : str, optional
+            A string describing the image display style. Options include ``dark`` 
+            which sets a black facecolor, and ``bright`` which sets a white 
+            facecolor
+        """
+        from regions import Regions
+        
+        # Import current detections
+        NoneType = type(None)
+        detections, flag, filey = self.read_final_detections(detectiontype="basic")
+        
+        # If no detections are found, run the default image display method
+        if type(detections) == NoneType:
+            self.display_image()
+            return
+        if len(detections["INDEX"]) == 0:
+            self.display_image()
+            return
+        
+        # Initialize figure and plot elements
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        stacked_data = fits.getdata(os.path.join(self._impath, "34-1934_5000-3/nu_199823346.35401693-199828346.35401693_2.96to78.96keV_det1.fits"))
+        im = ax.imshow(stacked_data, origin='lower', norm=matplotlib.colors.LogNorm())
+        center = Point(self._source_det1_coords['A'][0], self._source_det1_coords['A'][1]).buffer(70, resolution=1000)
+        plot_polygon(center, ax=ax, add_points=False, color="yellow")
+        
+        # Plot all detections
+        det_pos_x = []
+        det_pos_y = []
+        det_pos_prob = []
+        for idx, val in enumerate(detections['XPIX']):
+            x_pix = detections['DET1X'][idx]
+            y_pix = detections['DET1Y'][idx]
+            
+            # Sanity check for main source mask
+            #if np.sqrt((float(x_pix) - float(self._source_pix_coordinates[0][0]))**2 + (float(y_pix) - float(self._source_pix_coordinates[0][1]))**2) > 70:
+            det_pos_x.append(float(x_pix))
+            det_pos_y.append(float(y_pix)) 
+            det_pos_prob.append(float(detections['PROB'][idx]))
+        det_scatter = ax.scatter(det_pos_x, det_pos_y, marker="d", c=det_pos_prob, s=120, linewidths=1, edgecolors= "black", cmap="spring", norm=matplotlib.colors.LogNorm()) 
+        cb = plt.colorbar(det_scatter, orientation="vertical")
+        plt.title("Probability", x=1.11)
+        plt.grid(True)
+        plt.xlim(0, 360)
+        plt.ylim(0, 360)
+        
+        # Read in region file
+        reg_file = os.path.join(f"./../60160680002A_StrayCatsI_567.reg")
+        region_list = Regions.read(reg_file, format="ds9")
+        with open(reg_file, 'r') as filey:
+            reg_info = filey.readlines()
+        
+        # Read in mask constructables
+        construct = []
+        flag = False
+        for line in reg_info:
+            if flag:
+                if line[0] == '-':
+                    construct.append('-')
+                else:
+                    construct.append('+')
+            if line == "image\n":
+                flag = True
+
+        # Trivial single case
+        if len(region_list) == 1:
+            pos = region_list[0].center.xy
+            radius = region_list[0].radius
+            src_x = pos[0]
+            src_y = pos[1]
+            mask = Point(src_x, src_y).buffer(radius, resolution=1000)
+            
+        # Multi region file case
+        if len(region_list) > 1:
+            pos = region_list[0].center.xy
+            radius = region_list[0].radius
+            src_x = pos[0]
+            src_y = pos[1]
+            mask = Point(src_x, src_y).buffer(radius, resolution=1000)
+            
+            # Construct the full region
+            for idx, region in enumerate(region_list):
+                if idx == 0:
+                    continue 
+                print(type(region))
+                if construct[idx] == '+':
+                    pos = region.center.xy
+                    radius = region.radius
+                    src_x = pos[0]
+                    src_y = pos[1]
+                    mask_add = Point(src_x, src_y).buffer(radius, resolution=1000)
+                    mask = mask.union(mask_add)
+                    
+                if construct[idx] == '-':
+                    pos = region.center.xy
+                    radius = region.radius
+                    src_x = pos[0]
+                    src_y = pos[1]
+                    mask_subtract = Point(src_x, src_y).buffer(radius, resolution=1000)
+                    mask = mask.difference(mask_subtract)
+
+        plot_polygon(mask, ax=ax, add_points=False)
+        
+        # Apply style parameters
+        if style == "dark":
+            fig.patch.set_facecolor("black")
+            ax.set_facecolor("gray")
+            ax.tick_params(color="white", labelcolor="white")
+            ax.tick_params(axis="both", which="major", labelsize=15)
+            im.axes.tick_params(color="white", labelcolor="white")
+            cb.set_label('Probability', color='white', fontsize=15)
+            cb.ax.yaxis.set_tick_params(color='white')
+            cb.outline.set_edgecolor('white')
+            plt.setp(plt.getp(cb.ax.yaxis, 'ticklabels'), color='white', fontsize=15)
+            plt.xlabel("DET1X", color="white", fontsize=18)
+            plt.ylabel("DET1Y", color="white", fontsize=18)
+            
+        if style == "bright":
+            fig.patch.set_facecolor("white")
+            ax.set_facecolor("white")
+            ax.tick_params(color="black", labelcolor="black")
+            ax.tick_params(axis="both", which="major", labelsize=15)
+            im.axes.tick_params(color="black", labelcolor="white")
+            cb.set_label('Probability', color="black", fontsize=15)
+            cb.ax.yaxis.set_tick_params(color="black")
+            cb.outline.set_edgecolor("black")
+            plt.setp(plt.getp(cb.ax.yaxis, 'ticklabels'), color="black", fontsize=15)
+            plt.xlabel("DET1X", color="black", fontsize=18)
+            plt.ylabel("DET1Y", color="black", fontsize=18)
+
+        # IO
+        if savefig:
+            savepath = os.path.relpath(os.path.join(self._outpath, "final_detections.pdf"))
+            plt.savefig(savepath, dpi=1000)
         if display:
             plt.show()
 
@@ -1913,8 +2066,9 @@ class NuAnalysis(Observation):
 
     def detection_lightcurve(self, xpix, ypix, low_pi, high_pi, tstart, tstop):
         from astropy.io.fits import getdata
-        dt = 5000
-        evt_data = getdata(self._refpath + f"{low_pi}-{high_pi}.evt")
+        dt = 30
+        #evt_data = getdata(self._refpath + f"{low_pi}-{high_pi}.evt")
+        evt_data = getdata(os.path.join(self._mainpath, "science.evt"))
         times = []
         for datum in evt_data:
             x = float(datum[13])
@@ -2053,7 +2207,7 @@ class NuAnalysis(Observation):
                     tstarts.append(detections["TSTART"][index2])
                     tstops.append(detections["TSTOP"][index2])
                     channels.append(detections["BOUND"][index2])
-            present_percent = min(len(set(tstarts)), len(set(tstops))) / self.n_cuts
+            present_percent = len(set(tstarts)) / (2 * self.n_cuts)
             channels_percent = len(set(channels)) / 4
             tpersist.append(present_percent)
             cpersist.append(channels_percent)
@@ -2180,7 +2334,7 @@ class NuAnalysis(Observation):
         
         # Import current detections
         NoneType = type(None)
-        detections, flag, filey = self.read_final_detections(detectiontype="poisson")
+        detections, flag, filey = self.read_final_detections(detectiontype="basic")
         
         # If no detections are found, run the default image display method
         if type(detections) == NoneType:
@@ -2551,3 +2705,70 @@ class NuAnalysis(Observation):
             file.write("PROCESSING COMPLETE")
         os.chdir(self._mainpath)
         return
+    
+    
+    def classify_persistent_transients(self):
+        """
+        This method applies a simple algorithm to classify persistent vs 
+        transient sources.
+        """
+        
+        print("#" * 90)
+        print(f"Measuring the persistence value for sources.")
+        print("#" * 90)
+        detections, flag, filey = self.read_final_detections(detectiontype="basicdet1")
+        
+        test_flag = os.path.join(self._evdir , f"{self._dtime}_det1basic_flag.txt")
+        if not os.path.isfile(test_flag):
+            return
+        
+        NoneType = type(None)
+        if type(detections) == NoneType:
+            # Create completion flag
+            #os.chdir(self._evtpath)
+            #with open(f"{self._dtime}_classify_det1_flag.txt", 'w') as file:
+            #    file.write("PROCESSING COMPLETE")
+            #os.chdir(self._mainpath)
+            os.chdir(self._evtpath)
+            with open(f"{self._dtime}_classify_det1_flag.txt", 'w') as file:
+                file.write("PROCESSING COMPLETE")
+            os.chdir(self._mainpath)
+            print("No det1 detections found")
+            return
+        if len(detections["INDEX"]) == 0:
+            # Create completion flag
+            os.chdir(self._evtpath)
+            with open(f"{self._dtime}_classify_det1_flag.txt", 'w') as file:
+                file.write("PROCESSING COMPLETE")
+            os.chdir(self._mainpath)
+            print("No det1 detections were confirmed")
+            return
+        tpersist = []
+        cpersist = []
+        print(detections)
+        for index, value in tqdm(enumerate(detections['INDEX'])):
+            tstarts = []
+            tstops = []
+            channels = []
+            xpix = float(detections["XPIX"][index])
+            ypix = float(detections["YPIX"][index])
+            tstarts.append(detections["TSTART"][index])
+            tstops.append(detections["TSTOP"][index])
+            channels.append(detections["BOUND"][index])
+            for index2, value2 in enumerate(detections['INDEX']):
+                if np.sqrt((float(detections["XPIX"][index2]) - xpix) ** 2 + (float(detections["YPIX"][index2]) - ypix) ** 2) <= 20:
+                    tstarts.append(detections["TSTART"][index2])
+                    tstops.append(detections["TSTOP"][index2])
+                    channels.append(detections["BOUND"][index2])
+            present_percent = min(len(set(tstarts)), len(set(tstops))) / (self._start_intervals_pass1 + self._start_intervals_pass2)
+            channels_percent = len(set(channels)) / 4
+            tpersist.append(present_percent)
+            cpersist.append(channels_percent)            
+        detections['TPERSIST'] = tpersist
+        detections['CPERSIST'] = cpersist
+        detect_table = Table(detections)
+        detect_table.write(os.path.join(self._detpath, f"{self._dtime}_basicdet1_classify.tbl"), format='ipac', overwrite=True)
+        os.chdir(self._evtpath)
+        with open(f"{self._dtime}_classify_det1_flag.txt", 'w') as file:
+            file.write("PROCESSING COMPLETE")
+        os.chdir(self._mainpath)
