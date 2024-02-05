@@ -1,3 +1,7 @@
+"""
+This script runs recovery routines on observations to verify that appropriate file confirmations are in place.
+"""
+
 from helpers import *
 from nuanalysis import NuAnalysis
 
@@ -6,7 +10,7 @@ starting_directory = os.getcwd()
 dtimes = [500]
 for dtime in dtimes:
     run_order = {}
-    run_cycle = 28
+    run_cycle = 23
     counter = 0
     low_phi_file = "./ref_files/nustar_pilow.txt"
     high_phi_file = "./ref_files/nustar_pihi.txt"
