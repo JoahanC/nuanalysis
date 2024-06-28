@@ -1,7 +1,8 @@
+""" 
+Utilities file that is adapted from the nustar_gen_utils package.
+"""
 import os
-import warnings
 import numpy as np
-
 
 
 def energy_to_chan(keV):
@@ -98,7 +99,6 @@ def make_usr_gti(input_gtis, outfile='usrgti.fits', **kwargs):
             new_gti = gti_stub.copy()
         else:
             new_gti = append_fits_entry(new_gti, gti_stub)
-        
     
     fits.writeto(outfile, new_gti, new_hdr, **kwargs)
 

@@ -1,3 +1,8 @@
+""" 
+This file runs a recovery routine on observations which did had 
+interrupted pipeline calls pertaining to their binning and 
+detection calls.
+"""
 from helpers import *
 from nuanalysis import NuAnalysis
 
@@ -19,7 +24,6 @@ for dtime in dtimes:
     for idx in run_order:
         object_name = run_order[idx][0]
         seqid = run_order[idx][1]
-        #if f"{dtime}_binning_flag.txt" not in os.listdir(os.path.relpath(f"/Volumes/data_ssd_2/{run_cycle}/{seqid}/event_cl/")):
         path = os.path.relpath(f"/Volumes/data_ssd_2/{run_cycle}/{seqid}/")
         evdir = os.path.join(path, "event_cl")
         out_path = os.path.join(path, "products")
@@ -29,8 +33,6 @@ for dtime in dtimes:
             run_object.write_net_detections()
             os.chdir(starting_directory)
         os.chdir(starting_directory)
-        #else:
-        #    print("SEQID already processed!")
 
 
 dtimes = [5000, 1000, 500]
@@ -49,7 +51,6 @@ for dtime in dtimes:
     for idx in run_order:
         object_name = run_order[idx][0]
         seqid = run_order[idx][1]
-        #if f"{dtime}_binning_flag.txt" not in os.listdir(os.path.relpath(f"/Volumes/data_ssd_2/{run_cycle}/{seqid}/event_cl/")):
         path = os.path.relpath(f"/Volumes/data_ssd_2/{run_cycle}/{seqid}/")
         evdir = os.path.join(path, "event_cl")
         out_path = os.path.join(path, "products")
@@ -59,5 +60,3 @@ for dtime in dtimes:
             run_object.write_net_detections()
             os.chdir(starting_directory)
         os.chdir(starting_directory)
-        #else:
-        #    print("SEQID already processed!")

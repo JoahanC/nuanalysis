@@ -1,3 +1,8 @@
+""" 
+This script generates a verification log in the directories of 
+observations which have been verified to have had the event 
+extraction section of the pipeline fully processed.
+"""
 from helpers import *
 from nuanalysis import NuAnalysis
 
