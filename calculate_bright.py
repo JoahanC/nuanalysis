@@ -1,3 +1,8 @@
+"""
+This script crudely estimates the intensity of main sources by 
+estimating the number of main source counts through the native 
+`nuanalysis` estimate routine.
+"""
 from helpers import *
 from nuanalysis import NuAnalysis
 

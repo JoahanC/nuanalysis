@@ -1,3 +1,7 @@
+""" 
+This file contains an assortment of different helper functions for 
+use in `nuanalysis`.
+"""
 import glob
 import os
 import subprocess

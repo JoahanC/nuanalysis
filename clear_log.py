@@ -1,5 +1,6 @@
 """
-Housekeeping script created to remove log files which bloat post-observation folders.
+Housekeeping script created to remove unnecesssary log files which 
+bloat post-observation folders.
 """
 import os
 import glob

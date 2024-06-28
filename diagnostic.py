@@ -1,3 +1,7 @@
+""" 
+This script is a direct import from the `nustar_gen_utils` package
+with a few import line changes.
+"""
 from nustar import *
 import os
 import astropy.units as u
@@ -236,7 +240,7 @@ def compare_sun_spec(obs,mod='A',src_rad = 2*u.arcmin,
     from astropy.table import Table
     from numpy import interp, histogram, sqrt
     from astropy.io.fits import getheader
-    from nustar_gen.utils import chan_to_energy
+    from utils import chan_to_energy
     
     
     import matplotlib.pyplot as plt

@@ -1,3 +1,7 @@
+""" 
+This short script searches for a sequence id in the running directory 
+for nustar observations.
+"""
 import glob 
 import os
 
