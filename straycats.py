@@ -1,3 +1,9 @@
+""" 
+This script generates a text file which summarizes all of the 
+StrayCats regions files and sorts them by module and sequence 
+id for running `nuanalysis`.
+"""
+
 import os
 import glob
 import numpy as np
