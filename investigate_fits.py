@@ -1,3 +1,7 @@
+""" 
+This scripts checks for the existence of detectiosn in a NuSTAR 
+observation post pipeline processing.
+"""
 from helpers import *
 from nuanalysis import NuAnalysis
 from astropy.io import fits

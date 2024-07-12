@@ -1,3 +1,7 @@
+""" 
+An adapted class file from `nustar_gen_utils` which is designed to be 
+specifically used for `nuanalysis`.
+"""
 from astropy.time import Time, TimeDelta
 import astropy.units as u
 import os

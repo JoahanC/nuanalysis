@@ -1513,8 +1513,6 @@ class NuAnalysis(Observation):
 
     def nuproducts(self, detect_info, pi_bounds):
         """
-        
-
         Arguments
         ---------
             detect_info (_type_): _description_
@@ -2600,6 +2598,10 @@ class NuAnalysis(Observation):
     
     
     def convert_basic_to_det1(self):
+        """ 
+        Calctulates and assigns DET1 coordinates to 
+        """
+        
         
         # Display terminal
         print('#' * 90)
@@ -2663,11 +2665,10 @@ class NuAnalysis(Observation):
 
     def main_source_removal(self):
         """
-        Checks if this Observation was analyzed in any of the StrayCats surveys 
-        and flags detections which where located within any identified regions.
+        This method loops through a set of detections and eliminates 
+        those which are located within the main source mask for this 
+        observation.
         """
-        from astropy.io.fits import getdata
-        from regions import Regions
         
         # Import current detections
         NoneType = type(None)
@@ -2679,6 +2680,7 @@ class NuAnalysis(Observation):
         if len(detections["INDEX"]) == 0:
             return
         
+        # Sanity check for pixels not in the main source mask
         valid_indices = []
         for idx, val in tqdm(enumerate(detections['XPIX'])):
             pix_x = detections['XPIX'][idx]
@@ -2686,6 +2688,7 @@ class NuAnalysis(Observation):
             if np.sqrt((float(pix_x) - float(self._source_pix_coordinates[0][0]))**2 + (float(pix_y) - float(self._source_pix_coordinates[0][1]))**2) > (180) / 2.5:
                 valid_indices.append(idx)    
         
+        # Recreate dictionary for remaining detections
         filtered_detections = {}
         for col in detections.colnames:
             filtered_detections[col] = []
@@ -2693,6 +2696,7 @@ class NuAnalysis(Observation):
             for idx in valid_indices:
                 filtered_detections[col].append(detections[col][idx])
         
+        # Write newly filtered dictionary to astropy table
         detect_table = Table()
         for key in filtered_detections:
             detect_table[key] = filtered_detections[key]
@@ -2718,6 +2722,7 @@ class NuAnalysis(Observation):
         print("#" * 90)
         detections, flag, filey = self.read_final_detections(detectiontype="basicdet1")
         
+        # Check if det1
         test_flag = os.path.join(self._evdir , f"{self._dtime}_det1basic_flag.txt")
         if not os.path.isfile(test_flag):
             return
