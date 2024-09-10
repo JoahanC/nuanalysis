@@ -340,7 +340,8 @@ def make_straylight_arf(det1im, regfile, filt_file, mod, obs):
     arf_hdu.close()
     
     return out_arf
-    
+
+
 def validate_det1_region(regfile):
     """
     Code for making sure that region files that you're trying to use on the DET1
@@ -515,7 +516,6 @@ def straylight_background(det1im_file='None', sky2det_file='None',
 
     counts = (im*src_mask).sum() * u.ct * 1.0
     rate= counts / (area *im_hdr['EXPOSURE']*u.s)
-
 
 
     if diag is True:

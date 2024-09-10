@@ -1,3 +1,8 @@
+""" 
+File which contains several useful wrappers for interfacing with 
+HEASoft.
+Adapted from the nustar_gen_utils package.
+"""
 import os, stat
 import warnings
 

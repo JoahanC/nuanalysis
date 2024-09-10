@@ -11,11 +11,13 @@ import matplotlib.pyplot as plt
 
 
 # Read in a regions file and record its contents
-region_list = Regions.read("/Volumes/data_ssd_1/bifrost_data/straycat/40014024001A_StrayCatsI_260.reg", format='ds9')
-with open("/Volumes/data_ssd_1/bifrost_data/straycat/40014024001A_StrayCatsI_260.reg", 'r') as filey:
-    reg_info = filey.readlines()
+filepath = "/Volumes/data_ssd_1/bifrost_data/straycat/40014024001A_StrayCatsI_260.reg"
+region_list = Regions.read(filepath, format='ds9')
+with open(filepath, 'r') as region_file:
+    reg_info = region_file.readlines()
 
 
+# Initialize sequence of operations
 construct = []
 flag = False
 for line in reg_info:
@@ -48,7 +50,9 @@ if len(region_list) > 1:
     
     for idx, region in enumerate(region_list):
         if idx == 0:
-            continue 
+            continue
+        
+        # Combine two regions via a union 
         if construct[idx] == '+':
             pos = region.center.xy
             radius = region.radius
@@ -56,7 +60,8 @@ if len(region_list) > 1:
             src_y = pos[1]
             mask_add = Point(src_x, src_y).buffer(radius, resolution=1000)
             mask = mask.union(mask_add)
-            
+        
+        # Subtract two regions via a difference
         if construct[idx] == '-':
             pos = region.center.xy
             radius = region.radius
