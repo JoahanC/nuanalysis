@@ -1,0 +1,14 @@
+In this folder are several iterations of the transient search that were conducted on the 11 year data. 
+The most recent datasets are those listed as ssd*_poisson_*_final.tbl, these datasets have corrected 
+poisson statistics. The numbers 500/1000/5000 refer to the characteristic timescale for each transient 
+search.
+
+The ssd* labels on each file refer to a personal naming convention as the data needed to be split into two 
+storage components, so the complete dataset refers to both the ssd1 and ssd2 data tables.
+
+In each table are flagged pixels which were calculated to have a statistically significant transient event. 
+The main source has been masked out of each NuSTAR data observation to reduce the number of false detections, 
+but there is still a significant amount of false detections attributed to straylight, as well as some PSF 
+bleeding from the main source. For each flagged pixel, the sequence id corresponding to its observation is attached, as well 
+as its attributed poisson statistic probability, the time interval at which it occured in the observation, and the 
+energy channel to which it belongs to.

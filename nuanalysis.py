@@ -594,7 +594,7 @@ class NuAnalysis(Observation):
     
     def verify_event_extraction(self):
         """
-        This method performs a check to verify if all of the relevant evt files 
+        This method performs a check to verify if all of the relevant .evt files 
         have been created within the event extraction phase
         """
 
@@ -1428,7 +1428,10 @@ class NuAnalysis(Observation):
     
     
     def detection_dir_processing(self, bounds):
-        
+        """ 
+        Trims down set of detections via removing duplicates and detections which 
+        are within the main source mask for this target.
+        """
         # Read in unique detection information, return None if not present
         unique_detect_info = self.read_unique_detections(bounds)
         if unique_detect_info == None:
@@ -1463,9 +1466,13 @@ class NuAnalysis(Observation):
     
 
     def write_net_detections(self):
-
+        """ 
+        Writes all screened detections to a file.
+        """
+        
         print("Merging all valid detections")
 
+        # Loop through all channels
         for channel in self._phi_channels:
             trimmed_all_info = self.detection_dir_processing(channel)
             if trimmed_all_info == None:
@@ -2280,7 +2287,9 @@ class NuAnalysis(Observation):
 
 
     def convert_detection_coords(self):
-
+        """ 
+        Runs the sky to DET1 coordinate conversion routine on an observation.
+        """
         detections, flag, filename = self.read_final_detections()
         
         NoneType = type(None)
@@ -2386,8 +2395,11 @@ class NuAnalysis(Observation):
                 plt.show()
 
 
-    def collect_det1coords(self):
-        with open(os.path.join(self._detpath, "5000_detections_detc.txt")) as file:
+    def collect_det1coords(self, dtime):
+        """ 
+        Returns all DET1 coordinates for a given detection set.
+        """
+        with open(os.path.join(self._detpath, f"{dtime}_detections_detc.txt")) as file:
             data = file.readlines()
         coords = {}
         for datum in data:
@@ -2599,9 +2611,8 @@ class NuAnalysis(Observation):
     
     def convert_basic_to_det1(self):
         """ 
-        Calctulates and assigns DET1 coordinates to 
+        Calculates and assigns DET1 coordinates to detection flagged pixels.
         """
-        
         
         # Display terminal
         print('#' * 90)
@@ -2727,6 +2738,7 @@ class NuAnalysis(Observation):
         if not os.path.isfile(test_flag):
             return
         
+        # Check if atleast one detection is present
         NoneType = type(None)
         if type(detections) == NoneType:
             # Create completion flag
@@ -2748,9 +2760,10 @@ class NuAnalysis(Observation):
             os.chdir(self._mainpath)
             print("No det1 detections were confirmed")
             return
+        
         tpersist = []
         cpersist = []
-        print(detections)
+        
         for index, value in tqdm(enumerate(detections['INDEX'])):
             tstarts = []
             tstops = []

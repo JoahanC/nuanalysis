@@ -13,7 +13,7 @@ seqids = []
 dtimes = []
 
 # Create a text file which tracks the all sequence ids to be inspected
-with open("recovery_list_3.txt", 'r') as file:
+with open("./recovery_list.txt", 'r') as file:
     for line in file.readlines():
         datum = line.split()
         run_order.append(datum[0])

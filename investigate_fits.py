@@ -1,5 +1,5 @@
 """ 
-This scripts checks for the existence of detectiosn in a NuSTAR 
+This scripts checks for the existence of detections in a NuSTAR 
 observation post pipeline processing.
 """
 from helpers import *

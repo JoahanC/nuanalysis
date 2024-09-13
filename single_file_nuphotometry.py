@@ -1,3 +1,6 @@
+""" 
+A test script for performing photometry on a single NuSTAR observation.
+"""
 import astropy
 import numpy as np
 from wrappers import *
@@ -8,12 +11,19 @@ from photutils.aperture import RectangularAperture, CircularAperture, CircularAn
 from tqdm import tqdm
 from nuphotometry import *
 
-
+# 60160680002
 #make_det1_image("./../bifrost_data/60701033002/event_cl/nu60701033002A01_cl.evt", elow=1.6, ehigh=79, outpath="./../bifrost_data/60701033002/event_cl")
-stacked_data = astropy.io.fits.getdata("./../bifrost_data/60701033002/event_cl/nu60701033002A01_cl_1.6to79keV_det1.fits")
-stacked_a_data = astropy.io.fits.getdata("./../bifrost_data/60701033002/event_cl/nu60701033002A01_cl.evt")
-wcs = astropy.wcs.WCS(astropy.io.fits.getheader("./../bifrost_data/60701033002/science.fits"))
-header = astropy.io.fits.getheader("./test/nu60701033002A01_cl_1.6to79keV_det1.fits")
+#seqid = "60701033002"
+seqid = "80902312004"
+stacked_data = astropy.io.fits.getdata(f"./../bifrost_data/{seqid}/event_cl/nu{seqid}A01_cl_2.96to78.96keV_det1.fits")
+stacked_a_data = astropy.io.fits.getdata(f"./../bifrost_data/{seqid}/event_cl/nu{seqid}A01_cl.evt")
+wcs = astropy.wcs.WCS(astropy.io.fits.getheader(f"./../bifrost_data/{seqid}/science.fits"))
+header = astropy.io.fits.getheader(f"./test/nu{seqid}A01_cl_2.96to78.96keV_det1.fits")
+
+#stacked_data = astropy.io.fits.getdata("./../bifrost_data/60701033002/event_cl/nu60701033002A01_cl_1.6to79keV_det1.fits")
+#stacked_a_data = astropy.io.fits.getdata("./../bifrost_data/60701033002/event_cl/nu60701033002A01_cl.evt")
+#wcs = astropy.wcs.WCS(astropy.io.fits.getheader("./../bifrost_data/60701033002/science.fits"))
+#header = astropy.io.fits.getheader("./test/nu60701033002A01_cl_1.6to79keV_det1.fits")
 ra = header['RA_OBJ']
 dec = header['DEC_OBJ']
 obj_pos = SkyCoord(ra, dec, unit='deg')
@@ -24,7 +34,8 @@ print(pix_coordinates)
 
 x_vals = []
 y_vals = []
-maping = getdata("./../bifrost_data/60701033002/event_cl/nu60701033002A_det1.fits")
+maping = getdata(f"./../bifrost_data/60701033002/event_cl/nu{seqid}A_det1.fits")
+#maping = getdata("./../bifrost_data/60701033002/event_cl/nu60701033002A_det1.fits")
 for datum in stacked_a_data:
     x = datum[13]
     y = datum[14]
