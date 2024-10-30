@@ -820,157 +820,6 @@ class NuAnalysis(Observation):
             plt.savefig("stacked_full.pdf", dpi=1000)
         if display:
             plt.show()
-    
-    
-    def display_strayimage(self, savefig=False, display=True, style="dark"):
-        """
-        Displays an image of the stacked full exposure image for this observation with the 
-        source labeled with a circular region and all observations for this specific 
-        observation labeled.
-        
-        Arguments
-        ---------
-        savefig : bool, optional
-            A flag determining whether to save the plot
-        display : bool, optional
-            A flag determining whether to display the plot in an interactive window
-        style : str, optional
-            A string describing the image display style. Options include ``dark`` 
-            which sets a black facecolor, and ``bright`` which sets a white 
-            facecolor
-        """
-        from regions import Regions
-        
-        # Import current detections
-        NoneType = type(None)
-        detections, flag, filey = self.read_final_detections(detectiontype="basic")
-        
-        # If no detections are found, run the default image display method
-        if type(detections) == NoneType:
-            self.display_image()
-            return
-        if len(detections["INDEX"]) == 0:
-            self.display_image()
-            return
-        
-        # Initialize figure and plot elements
-        fig = plt.figure()
-        ax = fig.add_subplot()
-        stacked_data = fits.getdata(os.path.join(self._impath, "34-1934_5000-3/nu_199823346.35401693-199828346.35401693_2.96to78.96keV_det1.fits"))
-        im = ax.imshow(stacked_data, origin='lower', norm=matplotlib.colors.LogNorm())
-        center = Point(self._source_det1_coords['A'][0], self._source_det1_coords['A'][1]).buffer(70, resolution=1000)
-        plot_polygon(center, ax=ax, add_points=False, color="yellow")
-        
-        # Plot all detections
-        det_pos_x = []
-        det_pos_y = []
-        det_pos_prob = []
-        for idx, val in enumerate(detections['XPIX']):
-            x_pix = detections['DET1X'][idx]
-            y_pix = detections['DET1Y'][idx]
-            
-            # Sanity check for main source mask
-            #if np.sqrt((float(x_pix) - float(self._source_pix_coordinates[0][0]))**2 + (float(y_pix) - float(self._source_pix_coordinates[0][1]))**2) > 70:
-            det_pos_x.append(float(x_pix))
-            det_pos_y.append(float(y_pix)) 
-            det_pos_prob.append(float(detections['PROB'][idx]))
-        det_scatter = ax.scatter(det_pos_x, det_pos_y, marker="d", c=det_pos_prob, s=120, linewidths=1, edgecolors= "black", cmap="spring", norm=matplotlib.colors.LogNorm()) 
-        cb = plt.colorbar(det_scatter, orientation="vertical")
-        plt.title("Probability", x=1.11)
-        plt.grid(True)
-        plt.xlim(0, 360)
-        plt.ylim(0, 360)
-        
-        # Read in region file
-        reg_file = os.path.join(f"./../60160680002A_StrayCatsI_567.reg")
-        region_list = Regions.read(reg_file, format="ds9")
-        with open(reg_file, 'r') as filey:
-            reg_info = filey.readlines()
-        
-        # Read in mask constructables
-        construct = []
-        flag = False
-        for line in reg_info:
-            if flag:
-                if line[0] == '-':
-                    construct.append('-')
-                else:
-                    construct.append('+')
-            if line == "image\n":
-                flag = True
-
-        # Trivial single case
-        if len(region_list) == 1:
-            pos = region_list[0].center.xy
-            radius = region_list[0].radius
-            src_x = pos[0]
-            src_y = pos[1]
-            mask = Point(src_x, src_y).buffer(radius, resolution=1000)
-            
-        # Multi region file case
-        if len(region_list) > 1:
-            pos = region_list[0].center.xy
-            radius = region_list[0].radius
-            src_x = pos[0]
-            src_y = pos[1]
-            mask = Point(src_x, src_y).buffer(radius, resolution=1000)
-            
-            # Construct the full region
-            for idx, region in enumerate(region_list):
-                if idx == 0:
-                    continue 
-                print(type(region))
-                if construct[idx] == '+':
-                    pos = region.center.xy
-                    radius = region.radius
-                    src_x = pos[0]
-                    src_y = pos[1]
-                    mask_add = Point(src_x, src_y).buffer(radius, resolution=1000)
-                    mask = mask.union(mask_add)
-                    
-                if construct[idx] == '-':
-                    pos = region.center.xy
-                    radius = region.radius
-                    src_x = pos[0]
-                    src_y = pos[1]
-                    mask_subtract = Point(src_x, src_y).buffer(radius, resolution=1000)
-                    mask = mask.difference(mask_subtract)
-
-        plot_polygon(mask, ax=ax, add_points=False)
-        
-        # Apply style parameters
-        if style == "dark":
-            fig.patch.set_facecolor("black")
-            ax.set_facecolor("gray")
-            ax.tick_params(color="white", labelcolor="white")
-            ax.tick_params(axis="both", which="major", labelsize=15)
-            im.axes.tick_params(color="white", labelcolor="white")
-            cb.set_label('Probability', color='white', fontsize=15)
-            cb.ax.yaxis.set_tick_params(color='white')
-            cb.outline.set_edgecolor('white')
-            plt.setp(plt.getp(cb.ax.yaxis, 'ticklabels'), color='white', fontsize=15)
-            plt.xlabel("DET1X", color="white", fontsize=18)
-            plt.ylabel("DET1Y", color="white", fontsize=18)
-            
-        if style == "bright":
-            fig.patch.set_facecolor("white")
-            ax.set_facecolor("white")
-            ax.tick_params(color="black", labelcolor="black")
-            ax.tick_params(axis="both", which="major", labelsize=15)
-            im.axes.tick_params(color="black", labelcolor="white")
-            cb.set_label('Probability', color="black", fontsize=15)
-            cb.ax.yaxis.set_tick_params(color="black")
-            cb.outline.set_edgecolor("black")
-            plt.setp(plt.getp(cb.ax.yaxis, 'ticklabels'), color="black", fontsize=15)
-            plt.xlabel("DET1X", color="black", fontsize=18)
-            plt.ylabel("DET1Y", color="black", fontsize=18)
-
-        # IO
-        if savefig:
-            savepath = os.path.relpath(os.path.join(self._outpath, "final_detections.pdf"))
-            plt.savefig(savepath, dpi=1000)
-        if display:
-            plt.show()
 
 
     def display_detections(self, savefig=False, display=True, style="dark"):
@@ -1362,13 +1211,6 @@ class NuAnalysis(Observation):
         """
         Reads in the individual detection files for the given PI bounds. The detections are then aggregated into an 
         Astropy table and returned.
-        
-        Arguments
-        ---------
-        
-        
-        Returns
-        -------
         """
         detpath = os.path.relpath(os.path.join(self._detpath, f"{bounds[0]}-{bounds[1]}_{self._dtime}-{self._snr}"))
         det_files = glob.glob(os.path.join(detpath, "*.det"))
@@ -1539,14 +1381,8 @@ class NuAnalysis(Observation):
 
     def nuproducts(self, detect_info, pi_bounds):
         """
-        Arguments
-        ---------
-            detect_info (_type_): _description_
-            pi_bounds (_type_): _description_
-
-        Return
-        ------
-            _type_: _description_
+        Low level method for running the command lines necessary for calling 
+        `nuproducts`
         """
         if detect_info == None:
             return None
@@ -1685,6 +1521,9 @@ class NuAnalysis(Observation):
 
     
     def acquire_event_curves(self):
+        """ 
+        Low level method for accessing lightcurves for detections
+        """
         detections, flag, filey = self.read_final_detections()
         if len(detections["INDEX"]) != 0:
             for idx in range(len(detections['INDEX'])):
@@ -1927,9 +1766,14 @@ class NuAnalysis(Observation):
                     plt.close()
 
 
-    def recalculate_poisson(self):
+    def recalculate_poisson(self, override=False):
+        """ 
+        This method is used to recalculate the poisson statistic implemented by 
+        `ximage` as there are known issues with the background estimation. These 
+        newly filtered candidates are then written to a new table, labeled:
+        ./detections/{dtime}_poisson.tbl
+        """
         from astropy.io.fits import getdata
-        
         
         # Check if poisson has been done
         if os.path.isfile(os.path.join(self._evtpath, f"{self._dtime}_poisson_flag.txt")):
@@ -1956,10 +1800,19 @@ class NuAnalysis(Observation):
         
         self.adata = getdata(self._fpma_eventpath)
 
+        # Look through each index
         for idx in tqdm(range(len(data_table['INDEX']))):
             
             if len(data_table['INDEX']) > 800:
-                return
+                print("WARNING: Over 800 flagged locations found!")
+                print("Straylight region/main source mask failure may be culprit!")
+                print("Set override=True to continue processing!")
+                if override:
+                    pass
+                else:
+                    return
+            
+            # Get detector coordinates
             detect_position = SkyCoord(f"{data_table['RA'][idx]} {data_table['DEC'][idx]}", unit=(u.hourangle, u.deg), frame='fk5')
             det_x = detect_position.ra.deg
             det_y = detect_position.dec.deg
@@ -1973,7 +1826,7 @@ class NuAnalysis(Observation):
             det_x = np.mean(mean_detx)
             det_y = np.mean(mean_dety)
 
-            
+            # Acquire flagged pixel information
             blow = int(data_table['BOUND'][idx].split('-')[0])
             bhigh = int(data_table['BOUND'][idx].split('-')[1])
             elow = round(self.ns.channel_to_energy(float(blow)), 3)
@@ -1987,6 +1840,7 @@ class NuAnalysis(Observation):
             outpath = os.path.relpath(os.path.join(self._impath, f"{blow}-{bhigh}_{self._dtime}-{self._snr}"))
             generate_directory(outpath)
             
+            # Perform photometry
             src_img = make_det1_image(datafile, elow=elow, ehigh=ehigh, outpath=outpath)
             det1_data = getdata(os.path.abspath(src_img))
             src_area = calculate_source_area(det1_data, det_x, det_y, 10) * 6.0516 * u.arcsecond * u.arcsecond
@@ -2001,6 +1855,7 @@ class NuAnalysis(Observation):
             if effective_exposure_time <= 0:
                 continue
             
+            # Conduct poisson test
             res = poisson_means_test(int(actual_counts.value), effective_exposure_time, int(src_predict.value), effective_exposure_time)
             if float(data_table["XPIX"][idx]) < 520 and float(data_table["XPIX"][idx]) > 480:
                 if float(data_table["YPIX"][idx]) < 389 and float(data_table["YPIX"][idx]) > 360:
@@ -2015,6 +1870,7 @@ class NuAnalysis(Observation):
         if n_obj != 0:
             print(f"Percent of objects kept: {passing/n_obj}")
         
+        # Rewrite remaining detections
         filtered_detections = {}
         for col in data_table.colnames:
             filtered_detections[col] = []
@@ -2032,28 +1888,6 @@ class NuAnalysis(Observation):
             detect_table[key] = filtered_detections[key]
         finalpath = os.path.relpath(os.path.join(self._detpath, f"{self._dtime}_poisson.tbl"))
         detect_table.write(finalpath, format='ipac', overwrite=True)
-        
-        #full_data = getdata(self._im_paths[f"2.96-78.96"][2])
-        #ax = plt.subplot(projection=self.wcs)
-        #im = ax.imshow(full_data, origin='lower', norm=matplotlib.colors.LogNorm())
-        #object_region = CircleSkyRegion(center=self._source_position, radius=self.rlimit*u.arcsecond)
-        #plot_region = object_region.to_pixel(self.wcs)
-        #plot_region.plot(ax=ax, color="yellow")
-
-        # Loop through detections and plot
-        
-        #x_pi = [float(pix) for pix in rejected_xpix]
-        #y_pi = [float(pix) for pix in rejected_ypix]
-
-        #ploty = ax.scatter(x_pi, y_pi, marker="d", s=40, linewidths=1, edgecolors= "black", cmap='spring', norm=matplotlib.colors.LogNorm())               
-        
-        #ax.get_coords_overlay(self.wcs)
-        #plt.grid(True)
-        #plt.xlabel('RA')
-        #plt.ylabel('DEC')
-        #plt.xlim(250, 750)
-        #plt.ylim(250, 750)
-        #plt.show()
 
         # Create completion flag
         os.chdir(self._evtpath)
@@ -2063,7 +1897,11 @@ class NuAnalysis(Observation):
 
 
     def calculate_effective_time(self, data, evt=True):
-        
+        """ 
+        This method returns an estimate for the exposure time of an 
+        observation, accounting for geometry-related dead gaps in 
+        lightcurves
+        """
         times = []
         for datum in data:
             if evt:
@@ -2074,24 +1912,20 @@ class NuAnalysis(Observation):
         tstop = np.max(times)
         lc_bins = np.arange(float(tstart), float(tstop), 20)
         lc, bines = np.histogram(times, lc_bins)
-        #t = []
         count = 0
         for idx, l in enumerate(lc):
-        #    t.append(idx)
             if l != 0:
                 count += 1
-        #t = np.array(t) * 20
-        #plt.plot(t, lc, ms= 1)
-        #plt.title(f"Effective exposure time: {count * 20}")
-        #plt.show()
-        #plt.close()
         return count * 20
     
-
+    
     def detection_lightcurve(self, xpix, ypix, low_pi, high_pi, tstart, tstop):
+        """ 
+        Low level method for plotting lightcurve data.
+        """
         from astropy.io.fits import getdata
         dt = 30
-        #evt_data = getdata(self._refpath + f"{low_pi}-{high_pi}.evt")
+
         evt_data = getdata(os.path.join(self._mainpath, "science.evt"))
         times = []
         for datum in evt_data:
@@ -2110,14 +1944,6 @@ class NuAnalysis(Observation):
             if l != 0:
                 count += 1
         t = np.array(t) * dt
-        #fig, ax = plt.subplots()
-        #ax.plot(t, lc, ms= 1)
-        #ax.axvspan(tstart - totstart, tstop - totstart, alpha=0.5, color="red")
-        #ax.set_title(f"Detection Lightcurve")
-        #ax.set_xlabel("Elapsed Time (sec)")
-        #ax.set_ylabel("Total Counts")
-        #plt.show()
-        #plt.close()
 
         intervals = []
         for i in range(len(lc_bins) - 1):
@@ -2154,16 +1980,22 @@ class NuAnalysis(Observation):
         axs[1].set_ylabel("Adjusted Count Rate")
         plt.show()
         plt.close()
-        
-        
-        
-        # calculate effective range
 
 
     
-    def plot_detection_lightcurves(self):
+    def plot_detection_lightcurves(self, override=False):
+        """ 
+        User-interface method for mass plotting lightcurves
+        """
         filepath = self._refpath + f"detections/{self._dtime}_3.tbl"
         data_table = Table.read(filepath, format='ipac')
+        if len(data_table['INDEX']) > 5:
+            if override:
+                pass 
+            else:
+                print(f"WARNING: {len(data_table['INDEX'])} candidates found!")
+                print("Set override=True to plot them")
+                return
         for idx in range(len(data_table['INDEX'])):
             xpix = float(data_table['XPIX'][idx])
             ypix = float(data_table['YPIX'][idx])
@@ -2173,29 +2005,6 @@ class NuAnalysis(Observation):
             tstop = float(data_table['TSTOP'][idx])
             self.detection_lightcurve(xpix, ypix, lbound, hbound, tstart, tstop)
 
-
-    def calculate_effective_exposure(self):
-        
-        times = []
-        for datum in self.adata:
-            times.append(float(datum[0]))
-        tstart = np.min(times)
-        tstop = np.max(times)
-        lc_bins = np.arange(float(tstart), float(tstop), 20)
-        lc, bines = np.histogram(times, lc_bins)
-        #t = []
-        count = 0
-        for idx, l in enumerate(lc):
-        #    t.append(idx)
-            if l != 0:
-                count += 1
-        #t = np.array(t) * 20
-        #plt.plot(t, lc, ms= 1)
-        #plt.title(f"Effective exposure time: {count * 20}")
-        #plt.show()
-        #plt.close()
-        return count * 20
-    
 
     def classify_sources(self):
         """
@@ -2576,7 +2385,9 @@ class NuAnalysis(Observation):
     
     
     def convert_to_det1(self):
-        
+        """ 
+        Evaluates the DET1 coordinates for recalculated poisson detections.
+        """
         # Display terminal
         print('#' * 90)
         print(f"Converting Poisson Detections to Det1 for SEQID: {self._seqid}")

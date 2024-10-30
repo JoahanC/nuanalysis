@@ -81,5 +81,8 @@ run_object = NuAnalysis(dtime, 3, path=path, low_phi_file=low_phi_file, high_phi
 # center target. 
 
 #max_count = run_object.determine_bright() 
-#print(max_count)
+
+
+
+
 os.chdir(starting_directory)
