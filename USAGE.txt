@@ -10,9 +10,5 @@ classes included in nustar_gen_utils. The methods of this class
 comprise of all of the different analysis routines that are 
 build into this repository. 
 
-# Initializing the class
-
-This class assumes that the NuSTAR data that you are using is 
-in a folder labeled by its NuSTAR sequence id. If clean events 
-files are not present in the sequence id folder, then the class 
-will automatically run `nupipeline` to generate clean event files.
+An example of how to use the scripts in this repository are 
+shown in the file: `working_example.py`
