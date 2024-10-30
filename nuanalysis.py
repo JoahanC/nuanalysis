@@ -466,6 +466,8 @@ class NuAnalysis(Observation):
             self._im_paths[f"{level[0]}-{level[1]}"].append(os.path.abspath(outfile))
 
         # Store relevant parameters
+        print(outfile)
+        outfile = f"images/nu{self.seqid}_2.96-78.96_keV_stacked.fits"
         hdu = fits.open(outfile, uint=True)[0]
         self.stacked_data = getdata(outfile)
         self.wcs = WCS(hdu.header)
@@ -501,6 +503,23 @@ class NuAnalysis(Observation):
                                 outpath=self._impath)
                 filtered_image_files['B'].append(b_file)
     
+    
+    def recalculate_center(self):
+        import astropy
+        from astropy.stats import sigma_clipped_stats
+        from photutils.detection import find_peaks
+        data = astropy.io.fits.getdata(self._im_paths["2.96-78.96"][2])
+        mean, median, std = sigma_clipped_stats(data, sigma=3)
+        if std == 0:
+            std = 0.1
+        tbl = find_peaks(data, std*10, box_size=20)
+        tbl['peak_value'].info.format = '%.8g'  # for consistent table output
+        tbl.sort('peak_value')
+        tbl.reverse()
+        print(tbl[0])
+        #print(self._source_pix_coordinates)
+        self._source_pix_coordinates = [[np.array(tbl['x_peak'][0]), np.array(tbl['y_peak'][0])]]
+        #print(self._source_pix_coordinates)
     
     def event_extraction(self):
         """
@@ -987,7 +1006,7 @@ class NuAnalysis(Observation):
         # Initialize figure and plot elements
         fig = plt.figure()
         ax = fig.add_subplot(projection=self.wcs)
-        stacked_data = fits.getdata(os.path.join(self._mainpath, "science.fits"))
+        stacked_data = fits.getdata(os.path.join(self._impath, f"nu{self._seqid}_{2.96}-{78.96}_keV_stacked.fits"))
         im = ax.imshow(stacked_data, origin='lower', norm=matplotlib.colors.LogNorm())
         center = Point(self._source_pix_coordinates[0][0], self._source_pix_coordinates[0][1]).buffer((self.rlimit) / 2.46, resolution=1000)
         plot_polygon(center, ax=ax, add_points=False, color="yellow")
@@ -1006,7 +1025,7 @@ class NuAnalysis(Observation):
                 det_pos_y.append(float(y_pix)) 
                 det_pos_prob.append(float(detections['PROB'][idx]))
         det_scatter = ax.scatter(det_pos_x, det_pos_y, marker="d", c=det_pos_prob, s=120, linewidths=1, edgecolors= "black", cmap="spring", norm=matplotlib.colors.LogNorm()) 
-        cb = plt.colorbar(det_scatter, orientation="vertical")
+        #cb = plt.colorbar(det_scatter, orientation="vertical")
         plt.title("Probability", x=1.11)
         plt.grid(True)
         plt.xlim(250, 750)
@@ -1019,10 +1038,10 @@ class NuAnalysis(Observation):
             ax.tick_params(color="white", labelcolor="white")
             ax.tick_params(axis="both", which="major", labelsize=15)
             im.axes.tick_params(color="white", labelcolor="white")
-            cb.set_label('Probability', color='white', fontsize=15)
-            cb.ax.yaxis.set_tick_params(color='white')
-            cb.outline.set_edgecolor('white')
-            plt.setp(plt.getp(cb.ax.yaxis, 'ticklabels'), color='white', fontsize=15)
+            #cb.set_label('Probability', color='white', fontsize=15)
+            #cb.ax.yaxis.set_tick_params(color='white')
+            #cb.outline.set_edgecolor('white')
+            #plt.setp(plt.getp(cb.ax.yaxis, 'ticklabels'), color='white', fontsize=15)
             plt.xlabel("Right Ascension", color="white", fontsize=18)
             plt.ylabel("Declination", color="white", fontsize=18)
             
@@ -1032,10 +1051,10 @@ class NuAnalysis(Observation):
             ax.tick_params(color="black", labelcolor="black")
             ax.tick_params(axis="both", which="major", labelsize=15)
             im.axes.tick_params(color="black", labelcolor="white")
-            cb.set_label('Probability', color="black", fontsize=15)
-            cb.ax.yaxis.set_tick_params(color="black")
-            cb.outline.set_edgecolor("black")
-            plt.setp(plt.getp(cb.ax.yaxis, 'ticklabels'), color="black", fontsize=15)
+            #cb.set_label('Probability', color="black", fontsize=15)
+            #cb.ax.yaxis.set_tick_params(color="black")
+            #cb.outline.set_edgecolor("black")
+            #plt.setp(plt.getp(cb.ax.yaxis, 'ticklabels'), color="black", fontsize=15)
             plt.xlabel("Right Ascension", color="black", fontsize=18)
             plt.ylabel("Declination", color="black", fontsize=18)
 
@@ -2275,7 +2294,7 @@ class NuAnalysis(Observation):
         os.chdir(self._evdir)
 
         mastaspectfile = f"nu{self.seqid}_mast.fits"
-        attfile = f"nu{self.seqid}_att.fits"
+        attfile = f"./../auxil/nu{self.seqid}_att.fits"
         outfile = f"nu{self.seqid}_detpos.fits"
 
         command_string = f"nuskytodet instrument=FPMA mastaspectfile={mastaspectfile} "
@@ -2310,6 +2329,7 @@ class NuAnalysis(Observation):
             dec_deg.append(detect_position.dec.deg)
         for idx in range(len(detections["INDEX"][0:5])):
             outfile = self.sky_to_detector(ra_deg[idx], dec_deg[idx])
+            print(outfile)
             data = fits.getdata(outfile)
             mean_detx = []
             mean_dety = []

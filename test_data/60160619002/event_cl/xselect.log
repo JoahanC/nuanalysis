@@ -1,0 +1,104 @@
+!xselect 15:39:04 29-Oct-2024
+ Command not found; type ? for a command listing
+!2.6211787674179905:SUZAKU > read events
+!> Enter the Event file dir >[.] .
+!> Enter Event file list >[nu60160619002A01_cl.evt , nu60160619002B01_cl.evt] n
+u60160619002A01_cl.evt , nu60160619002B01_cl.evt
+The file /Users/jcj/Documents/research/nustar/nuanalysis/test_data/60160619002/
+event_cl/ was not added:
+    -- it does not exist.
+**************************************************************************
+Warning ! The files you are entering have diverse values for INSTRUME
+One file has FPMB and another FPMA
+I hope you know what you are doing.
+**************************************************************************
+Got new mission: NUSTAR
+!> Reset the mission ? >[yes] yes
+ Notes: XSELECT set up for      NUSTAR
+ Time keyword is TIME       in units of s
+ Default timing binsize =   5.0000
+ 
+Setting...
+ Image  keywords   = X          Y           with binning =    1
+ WMAP   keywords   = X          Y           with binning =    1
+ Energy keyword   = PI                     with binning =    1
+ 
+Getting Min and Max for Energy Column...
+Got min and max for PI:     0   4095
+ 
+could not get minimum time resolution of the data read
+MJDREF =  5.5197000766019E+04 with TIMESYS = TT
+ Number of files read in:            2
+2/event_cl/2.6211787674179905_obscat.tmp outfile=/Users/jcj/Documents/researc
+h/nustar/nuanalysis/test_data/60160619002/event_cl/2.6211787674179905_read_cat.
+xsl keywords=@/Users/jcj/Documents/research/nustar/nuanalysis/test_data/60160
+619002/event_cl/2.6211787674179905_obslist.def maxlen=11 minlen=0 iform=I8 ef
+orm=E8.2 quiet=yes omit=no
+******************** Observation Catalogue ********************
+ 
+Data Directory is: /Users/jcj/Documents/research/nustar/nuanalysis/test_data/60
+160619002/event_cl/
+HK Directory is: /Users/jcj/Documents/research/nustar/nuanalysis/test_data/6016
+0619002/event_cl/
+cl/2.6211787674179905_read_cat.xsl STDOUT @2.6211787674179905_display.def -
+ prhead = no pagewidth = 128 wrap = yes showunit = no tdisp = yes
+ 
+ 
+        OBJECT               OBS_ID      DATE-OBS
+      1 1RXSJ153552d8m575055 60160619002 2016-04-21T04:46:08
+      2 1RXSJ153552d8m575055 60160619002 2016-04-21T04:46:08
+!2.6211787674179905:NUSTAR-FPMA > filter PHA_CUTOFF
+!> Lower cutoff for PHA >[559] 559
+!> Upper cutoff for PHA >[1934] 1934
+!2.6211787674179905:NUSTAR-FPMA > filter time scc
+No light curve has been made yet,
+So I can not put up the plot.
+ 
+ * Enter the start and stop times in SCC
+ 
+Use a comma to separate the times
+Type 'x' to exit time-entry
+Type 'c' to cancel time-entry
+!> Enter list of start and stop times >[x] 198943320.24707356 , 198943382.57385
+308
+!> Enter list of start and stop times >[198943320.24707356 , 198943382.57385308
+] x
+Wrote GTI's to file 2.6211787674179905_keybd_gti001.xsl
+!2.6211787674179905:NUSTAR-FPMA > extract events
+211787674179905_out_event.xsl copyall=no regionfile = NONE qdpfile = NONE fits
+binlc = NONE unbinlc = NONE phafile = NONE imgfile = NONE timefile = @xsel_tim
+efile.asc adjustgti=no gstring = NONE usetpixrsel = no timeorder = no xcolf = 
+X ycolf = Y xcolh = X ycolh = Y xfkey = TLMAX yfkey = TLMAX xhkey = TLMAX yhkey
+ = TLMAX phamax = TLMAX specbin = 1 binh = 1 binf = 1 binlc = 5.0000000E+00 t
+col = TIME ecol = PI ccol = NONE gcol = GRADE polwcol = NONE gti = GTI events =
+ EVENTS gtitxt = 2.6211787674179905_ascii_out.xsl timeref = 40000.00 wtmapb
+ = yes wtmapfix = yes swmapx = no swmapy = no wmapver = 2 stokes = NONE gtinam 
+= GTI exitnow = no clobber=yes
+extractor v6.10    20 Jan 2023
+Input event files have inconsistent INSTRUMENT
+Input event files have inconsistent DEADC
+ Getting FITS WCS Keywords
+ Doing file: /Users/jcj/Documents/research/nustar/nuanalysis/test_data/60160619
+002/event_cl/nu60160619002A01_cl.evt
+          Total      Good    Bad: Time     Phase     Grade       Cut
+          24682        24        24592         0         0        66
+ Writing events file
+     24 events written to the output file
+ Doing file: /Users/jcj/Documents/research/nustar/nuanalysis/test_data/60160619
+002/event_cl/nu60160619002B01_cl.evt
+          Total      Good    Bad: Time     Phase     Grade       Cut
+          24316        23        24237         0         0        56
+ Writing events file
+     47 events written to the output file
+===============================================================================
+    Grand Total      Good    Bad: Time     Phase     Grade       Cut
+          48998        47        48829         0         0       122
+   in  53.152     seconds
+ts/research/nustar/nuanalysis/test_data/60160619002/event_cl/2.6211787674179905
+_temp.xsl column=TIME method=heap ascend=yes copyall=yes history=yes
+!2.6211787674179905:NUSTAR-FPMA > save events ../detections/559-1934_5000-3/nu_
+198943320.24707356-198943382.57385308.evt
+Wrote events list to file ../detections/559-1934_5000-3/nu_198943320.24707356-1
+98943382.57385308.evt
+!> Use filtered events as input data file ? >[no] no
+!2.6211787674179905:NUSTAR-FPMA > exit no
